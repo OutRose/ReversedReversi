@@ -1,0 +1,33 @@
+#include "GameMain.h"
+#include "GameSceneMain.h"
+#include "Game3Scene.h"
+
+//外部定義(GameMain.cppにて宣言)
+extern int Input, EdgeInput;
+
+// シーン開始前の初期化を行う
+BOOL initGame3Scene(void) {
+	return TRUE;
+}
+
+//	フレーム処理
+void moveGame3Scene() {
+	//７(3) 新たにボタン１が押されたら選択されているシーンへ
+	if ((EdgeInput & PAD_INPUT_1)) {
+		changeScene(SCENE_MENU);
+	}
+}
+
+//	レンダリング処理
+void renderGame3Scene(void) {
+	DrawString(30, 50, "ゲーム画面１です", GetColor(255, 255, 255));
+	DrawString(30, 100, "ボタン１でタイトルに戻る", GetColor(255, 255, 255));
+}
+
+//	シーン終了時の後処理
+void releaseGame3Scene(void) {
+}
+
+// 当り判定コールバック 　　　ここでは要素を削除しないこと！！
+void  Game3SceneCollideCallback(int nSrc, int nTarget, int nCollideID) {
+}
