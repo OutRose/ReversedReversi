@@ -1,2 +1,2 @@
-PlatformToolSet=v142:VCToolArchitecture=Native32Bit:VCToolsVersion=14.29.30133:VCServicingVersionATL=14.29.30136:VCServicingVersionCrtHeaders=14.29.30136:VCServicingVersionCompilers=14.29.30136:TargetPlatformVersion=10.0.18362.0:
-Debug|Win32|D:\学校関係資料保存庫\ゲーム制作\2週間課題,2020\まきもどリバーシ1.1\|
+PlatformToolSet=v143:VCToolArchitecture=Native32Bit:VCToolsVersion=14.33.31424:TargetPlatformVersion=10.0.19041.0:
+Debug|Win32|D:\Visual Studio Repository\RvRsTest\OutRose\ReversedReversi\|

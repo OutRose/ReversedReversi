@@ -7,7 +7,6 @@
 extern int Input, EdgeInput;
 extern char nameTmp[12];
 
-
 //シーン開始前の初期化を行う
 BOOL initGame5Scene(void)
 {

@@ -6,7 +6,7 @@
 #include <string>
 
 int SqBoardA[12][12];  //フィールドは12×12マス
-					  //なお、盤面上のデータは：0=置かれていない　1=黒　2=白
+//なお、盤面上のデータは：0=置かれていない　1=黒　2=白
 
 std::string msg2;	  //メッセージ格納用変数
 int msg_wait2;		  //メッセージ表示の時間
@@ -216,9 +216,9 @@ void moveGame4Scene()
 	ChangeFont("ＭＳ 明朝");
 
 	LoadDivGraph("res/piece.png", 2, 2, 1, 47, 47, pieces); //画像読み込み：コマ（1つを分割）
-   //back = LoadGraph("res/board1212.png");  //背景画像読み込み
+	//back = LoadGraph("res/board1212.png");  //背景画像読み込み
 
-	//SetDrawBlendMode(DX_BLENDMODE_PMA_INVSRC, 255);  //ボード画像反転の準備
+	 //SetDrawBlendMode(DX_BLENDMODE_PMA_INVSRC, 255);  //ボード画像反転の準備
 
 	SqBoardA[5][5] = SqBoardA[6][6] = 1;      //初期コマを盤上にセット
 	SqBoardA[6][5] = SqBoardA[5][6] = 2;
