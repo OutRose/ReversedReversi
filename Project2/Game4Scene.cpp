@@ -396,7 +396,7 @@ void moveGame4Scene()
 			{
 				DrawString(590, 40, blackC, ColorWhite2);
 			}
-
+			
 			DrawString(590, 90, "WHITE", ColorWhite2);
 			if (winning == 2)
 			{
@@ -472,7 +472,9 @@ void moveGame4Scene()
 }
 
 //	レンダリング処理
-void renderGame4Scene(void) {
+void renderGame4Scene(void) 
+{
+
 }
 
 //	シーン終了時の後処理
@@ -483,5 +485,7 @@ void releaseGame4Scene(void)
 }
 
 // 当り判定コールバック 　　　ここでは要素を削除しないこと！！
-void  Game4SceneCollideCallback(int nSrc, int nTarget, int nCollideID) {
+void  Game4SceneCollideCallback(int nSrc, int nTarget, int nCollideID) 
+{
+
 }

@@ -391,13 +391,19 @@ void moveGame1Scene()
 }
 
 //	レンダリング処理
-void renderGame1Scene(void) {
+void renderGame1Scene(void) 
+{
+
 }
 
 //	シーン終了時の後処理
-void releaseGame1Scene(void) {
+void releaseGame1Scene(void) 
+{
+
 }
 
 // 当り判定コールバック 　　　ここでは要素を削除しないこと！！
-void  Game1SceneCollideCallback(int nSrc, int nTarget, int nCollideID) {
+void  Game1SceneCollideCallback(int nSrc, int nTarget, int nCollideID) 
+{
+
 }
