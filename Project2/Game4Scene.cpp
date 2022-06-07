@@ -46,7 +46,7 @@ int putPiece2(int x, int y, int turn, bool put_flag)
 	for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++)
 	{
 		//— •Ô‚·‚±‚Æ‚ª‚Å‚«‚é“GƒRƒ}‚ÌˆÊ’u‚ğˆêŠi”[‚µ‚Ä‚¨‚­”z—ñ
-		int wx[12], wy[12];
+		int wx[12] = { 0 }, wy[12] = { 0 };
 
 		for (int wn = 0;; wn++)
 		{
