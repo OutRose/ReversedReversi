@@ -381,7 +381,7 @@ void moveGame4Scene()
 
 			//—D¨”»’è
 			int winning = 0;
-
+			
 			if (pcnum[0] > pcnum[1]) winning = 1;
 			else if (pcnum[0] < pcnum[1]) winning = 2;
 			else winning = 3;
