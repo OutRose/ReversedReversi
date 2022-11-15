@@ -54,17 +54,14 @@ void moveGame5Scene()
 //画面描画処理
 void renderGame5Scene(void)
 {
-
 }
 
 //シーン終了時の後処理
 void releaseGame5Scene(void)
 {
-
 }
 
 //当たり判定コールバック（要素削除禁止）
 void Game5SceneCollideCallback(int nSrc, int nTarget, int nCollideID)
 {
-
 }

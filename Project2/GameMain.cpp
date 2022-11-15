@@ -16,7 +16,7 @@ int Input;
 int EdgeInput;
 
 //WinMain関数
-int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_  LPSTR lpCmdLine, _In_ int nCmdShow) 
+int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_  LPSTR lpCmdLine, _In_ int nCmdShow)
 {
 	SetOutApplicationLogValidFlag(true);
 
@@ -60,7 +60,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 	InitGame();
 
 	//メインループ
-	while (1) 
+	while (1)
 	{
 		// 画面に描かれているものを一回全部消す
 		ClearDrawScreen();
