@@ -5,7 +5,6 @@
 #include "Game2Scene.h"
 #include "Game3Scene.h"
 #include "Game4Scene.h"
-#include "Game5Scene.h"
 #include "MenuScene.h"
 
 //このファイル内だけで使用する関数のプロトタイプ宣言
@@ -70,7 +69,6 @@ void  CollideCallback(int nSrc, int nTarget, int nCollideID) {
 	case SCENE_GAME2:	Game2SceneCollideCallback(nSrc, nTarget, nCollideID);		break;
 	case SCENE_GAME3:	Game3SceneCollideCallback(nSrc, nTarget, nCollideID);		break;
 	case SCENE_GAME4:	Game4SceneCollideCallback(nSrc, nTarget, nCollideID);		break;
-	case SCENE_GAME5:   Game5SceneCollideCallback(nSrc, nTarget, nCollideID);		break;
 	case SCENE_MAX:		break;
 	default:
 		MessageBox(NULL, "まだそのシーンはない", "作成途中", 0);
@@ -99,7 +97,6 @@ void initCurrentScene(void) {
 	case SCENE_GAME2:	initGame2Scene();	break;
 	case SCENE_GAME3:	initGame3Scene();	break;
 	case SCENE_GAME4:	initGame4Scene();	break;
-	case SCENE_GAME5:   initGame5Scene();	break;
 	case SCENE_MAX:		break;
 	default:
 		MessageBox(NULL, "まだそのシーンはない", "作成途中", 0);
@@ -115,7 +112,6 @@ void moveCurrentScene() {
 	case SCENE_GAME2:	moveGame2Scene();		break;
 	case SCENE_GAME3:	moveGame3Scene();		break;
 	case SCENE_GAME4:	moveGame4Scene();		break;
-	case SCENE_GAME5:   moveGame5Scene();		break;
 	case SCENE_MAX:		break;
 	default:
 		MessageBox(NULL, "まだそのシーンはない", "作成途中", 0);
@@ -131,7 +127,6 @@ void renderCurrentScene(void) {
 	case SCENE_GAME2:	renderGame2Scene();		break;
 	case SCENE_GAME3:	renderGame3Scene();		break;
 	case SCENE_GAME4:	renderGame4Scene();		break;
-	case SCENE_GAME5:   renderGame5Scene();		break;
 	case SCENE_MAX:		break;
 	default:
 		MessageBox(NULL, "まだそのシーンはない", "作成途中", 0);
@@ -147,7 +142,6 @@ void releaseCurrentScene(void) {
 	case SCENE_GAME2:	releaseGame2Scene();	break;
 	case SCENE_GAME3:	releaseGame3Scene();	break;
 	case SCENE_GAME4:	releaseGame4Scene();	break;
-	case SCENE_GAME5:   releaseGame5Scene();	break;
 	case SCENE_MAX:		break;
 	default:
 		MessageBox(NULL, "まだそのシーンはない", "作成途中", 0);

@@ -1,4 +1,5 @@
-﻿//ゲームの初期化
+﻿#pragma once
+//ゲームの初期化
 #include "DxLib.h"
 #include "GameStatus.h"
 

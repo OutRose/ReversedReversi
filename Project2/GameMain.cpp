@@ -3,8 +3,6 @@
 #include "GameSceneMain.h"
 
 //グローバル変数
-int game_status = GAMETITLE;
-
 int FrameStartTime;        // ６０ＦＰＳ固定用、時間保存用変数
 
 //ネームエントリー変数：プレイヤー側
@@ -23,15 +21,6 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 	//ウィンドウの設定
 	//ウィンドウモードの設定 false:全画面設定
 	ChangeWindowMode(true);
-
-	/*
-	// ウインドウモードで起動するか確認する
-	if (MessageBox(NULL, "ウインドウモードで起動しますか？", "画面モード確認", MB_YESNO) == IDYES)
-	{
-	// ウインドウモードで起動
-	ChangeWindowMode(TRUE);
-	}
-	*/
 
 	//ウィンドウのリサイズ
 	//Check:実行中に画面の大きさが変更可能か

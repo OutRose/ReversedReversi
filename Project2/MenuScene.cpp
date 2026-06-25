@@ -4,12 +4,10 @@
 
 //メニュー項目のシーン番号の配列
 #define MENU_MAX 3
-SCENE_NO menu[MENU_MAX] = { SCENE_GAME1, SCENE_GAME5, SCENE_GAME4 };
+SCENE_NO menu[MENU_MAX] = { SCENE_GAME1, SCENE_GAME3, SCENE_GAME2 };
 char* menuList[3] = { "ふつうの次元：頭をほどよく使う", "あまちゃん次元：頭をあまり使わない",  "まきもどり次元：頭をかなり使う" };
 //選択されたゲームを表すメニュー番号の初期化（menuの添え字）
 static int selectedGame = 0;
-
-int startfont;
 
 //外部定義(GameMain.cppにて宣言)
 extern int Input, EdgeInput;

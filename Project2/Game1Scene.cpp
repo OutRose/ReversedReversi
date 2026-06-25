@@ -184,7 +184,6 @@ int checkResult()
 void moveGame1Scene()
 {
 	int pieces[2];  //画像保存用変数　0=黒　1=白
-	//int back;
 	int status = 2; // 1:プレイ中 2:TURNメッセージ中 3:パスメッセージ中 4:終了
 	int turn = 1;   // 1:黒ターン 2:白ターン
 
@@ -193,9 +192,6 @@ void moveGame1Scene()
 	ChangeFont("ＭＳ 明朝");
 
 	LoadDivGraph("res/piece.png", 2, 2, 1, 47, 47, pieces); //画像読み込み：コマ（1つを分割）
-	//back = LoadGraph("res/board1212.png");  //背景画像読み込み
-
-	 //SetDrawBlendMode(DX_BLENDMODE_PMA_INVSRC, 255);  //ボード画像反転の準備
 
 	SqBoard[5][5] = SqBoard[6][6] = 1;      //初期コマを盤上にセット
 	SqBoard[6][5] = SqBoard[5][6] = 2;
@@ -260,8 +256,6 @@ void moveGame1Scene()
 		//ESCキーが押されたらループから抜ける
 		if (CheckHitKey(KEY_INPUT_ESCAPE) == 1)break;
 
-		//DrawGraph(100, 0, back, FALSE);
-
 		//プログラムで格子を描く（上ではうまく行かない）
 		//第1段階：四方の枠線とフィールド緑化
 		DrawBox(5, 5, 580, 580, GetColor(0, 100, 20), TRUE);
@@ -288,33 +282,6 @@ void moveGame1Scene()
 			DrawY = DrawY + DrawGap;
 			DrawLine(5, DrawY, 580, DrawY, ColorWhite);
 		}
-
-		/*テスト用：マウス座標取得
-		int mcx, mcy;
-		char StrBuf[128], StrBuf2[32];
-		int calcx, calcy;
-		char StrBuf3[128], StrBuf4[32];
-		GetMousePoint(&mcx, &mcy);
-		calcx = (mcx / 48);
-		calcy = (mcy / 48);
-		{
-			lstrcpy(StrBuf, "座標 Ｘ"); // 文字列"座標 Ｘ"をStrBufにコピー
-			itoa(mcx, StrBuf2, 10); // MouseXの値を文字列にしてStrBuf2に格納
-			lstrcat(StrBuf, StrBuf2); // StrBufの内容にStrBuf2の内容を付け足す
-			lstrcat(StrBuf, "　Ｙ "); // StrBufの内容に文字列"Ｙ"を付け足す
-			itoa(mcy, StrBuf2, 10); // MouseYの値を文字列にしてStrBuf2に格納
-			lstrcat(StrBuf, StrBuf2); // StrBufの内容にStrBuf2の内容を付け足す
-
-			lstrcpy(StrBuf3, "算出値 X");
-			itoa(calcx, StrBuf4, 10);
-			lstrcat(StrBuf3, StrBuf4);
-			lstrcat(StrBuf3, " Y ");
-			itoa(calcy, StrBuf4, 10);
-			lstrcat(StrBuf3, StrBuf4);
-		}
-		DrawString(0, 0, StrBuf, GetColor(255, 255, 255));
-		DrawString(0, 40, StrBuf3, GetColor(255, 255, 255));
-		//テスト用ここまで*/
 
 		for (int y = 0; y < 12; y++) for (int x = 0; x < 12; x++)
 		{

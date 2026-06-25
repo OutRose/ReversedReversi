@@ -1,5 +1,5 @@
-﻿#ifndef __GAMESCENEMAIN_H_
-#define __GAMESCENEMAIN_H_
+﻿#ifndef GAMESCENEMAIN_H_
+#define GAMESCENEMAIN_H_
 
 #include "GameMain.h"
 
@@ -15,11 +15,10 @@ void CollideCallback(int nSrc, int nTarget, int nCollideID);
 typedef enum _SCENE_NO {
 	SCENE_NONE = -1,		// シーン番号の下限。必ず書く
 	SCENE_MENU,			// メニューシーンの番号
-	SCENE_GAME1,		// ゲーム１シーンの番号
-	SCENE_GAME2,		// ゲーム２シーンの番号
-	SCENE_GAME3,		// ゲーム３シーンの番号
-	SCENE_GAME4,		// ゲーム４シーンの番号
-	SCENE_GAME5,		// ゲーム５シーンの番号
+	SCENE_GAME1,		// ふつうの次元（12×12 リバーシ本体）
+	SCENE_GAME2,		// まきもどり次元（2 ラウンド制）
+	SCENE_GAME3,		// あまちゃん次元（名前入力 → Game2 へ遷移）
+	SCENE_GAME4,		// 空シーン雛形（新シーン追加時のコピー元、menu[] 非掲載）
 	SCENE_MAX			// シーン番号の上限。必ず書く
 } SCENE_NO;
 
