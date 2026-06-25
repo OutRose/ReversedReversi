@@ -81,6 +81,28 @@ void rbCountPieces(ReversiBoard* state, int pcnum[2]);
 //ランダム削除 (Game2 まきもどり用、count マスをゼロにする)
 void rbRemovePieces(ReversiBoard* state, int count);
 
+//=========================================================================
+//盤面描画ヘルパ (Game1Scene/Game2Scene 共有、γ-1 後の δ-4 で renderXxxScene のクローン解消)
+//=========================================================================
+
+//盤面背景 + 四辺枠線を描画 (boardBgColor: 盤面緑、Game1=暗緑/Game2=明緑で引数差し替え)
+void rbDrawBoard(int boardBgColor);
+
+//縦横の格子線を描画 (色は ColorWhite 固定)
+void rbDrawGrid(void);
+
+//コマを描画 (pieces[0]=黒、pieces[1]=白 のハンドル配列)
+void rbDrawPieces(ReversiBoard* state, int pieces[2]);
+
+//ターン/パス/勝者メッセージ箱を描画 (status > GAME_STATUS_PLAYING の時のみ表示)
+void rbDrawMsg(ReversiBoard* state, int status);
+
+//右パネルの BLACK/WHITE カウントと優勢赤表示
+void rbDrawCountPanel(ReversiBoard* state);
+
+//誰のターンかを示す "← Now" インジケータを描画
+void rbDrawTurnIndicator(int turn);
+
 //シーンを変更する関数
 void changeScene(SCENE_NO no);
 

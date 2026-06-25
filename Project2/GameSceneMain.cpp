@@ -291,3 +291,83 @@ void rbRemovePieces(ReversiBoard* state, int count) {
 		state->board[rmy][rmx] = 0;
 	}
 }
+
+//=========================================================================
+//盤面描画ヘルパ (Game1Scene/Game2Scene 共有、δ-4 で renderXxxScene のクローン解消)
+//=========================================================================
+
+//盤面背景 + 四辺枠線を描画 (色は引数差し替え、Game1=暗緑/Game2=明緑)
+void rbDrawBoard(int boardBgColor) {
+	DrawBox(BOARD_ORIGIN_X, BOARD_ORIGIN_Y, BOARD_END_PX, BOARD_END_PX, boardBgColor, TRUE);
+	//四辺の枠線 (3 重描画は元コード由来、線幅強調)
+	for (int i = 0; i < 3; i++) {
+		DrawLine(BOARD_ORIGIN_X, BOARD_ORIGIN_Y, BOARD_END_PX,    BOARD_ORIGIN_Y, ColorWhite);
+		DrawLine(BOARD_ORIGIN_X, BOARD_ORIGIN_Y, BOARD_ORIGIN_X,  BOARD_END_PX,   ColorWhite);
+		DrawLine(BOARD_END_PX,   BOARD_ORIGIN_Y, BOARD_END_PX,    BOARD_END_PX,   ColorWhite);
+		DrawLine(BOARD_ORIGIN_X, BOARD_END_PX,   BOARD_END_PX,    BOARD_END_PX,   ColorWhite);
+	}
+}
+
+//縦横の格子線を描画 (盤面 12×12 の内側仕切り、BOARD_SIZE_MAX=11 本ずつ)
+void rbDrawGrid(void) {
+	int DrawX = BOARD_ORIGIN_X, DrawY = BOARD_ORIGIN_Y;
+	for (int i = 0; i < BOARD_SIZE_MAX; i++) {
+		DrawX += CELL_PX;
+		DrawLine(DrawX, BOARD_ORIGIN_Y, DrawX, BOARD_END_PX, ColorWhite);
+	}
+	for (int j = 0; j < BOARD_SIZE_MAX; j++) {
+		DrawY += CELL_PX;
+		DrawLine(BOARD_ORIGIN_X, DrawY, BOARD_END_PX, DrawY, ColorWhite);
+	}
+}
+
+//コマを描画 (pieces[0]=黒画像ハンドル、pieces[1]=白画像ハンドル)
+void rbDrawPieces(ReversiBoard* state, int pieces[2]) {
+	for (int y = 0; y < BOARD_SIZE; y++) for (int x = 0; x < BOARD_SIZE; x++) {
+		if (state->board[y][x]) {
+			DrawGraph(x * CELL_PX + BOARD_ORIGIN_X, y * CELL_PX + BOARD_ORIGIN_Y, pieces[state->board[y][x] - 1], TRUE);
+		}
+	}
+}
+
+//ターン/パス/勝者メッセージ箱を盤面下に描画 (PLAYING 中=1 は非表示)
+//status > 1 (TURN_MSG/PASS_MSG/FINISHED) の時に灰色箱の中に state->msg を表示
+void rbDrawMsg(ReversiBoard* state, int status) {
+	if (status <= GAME_STATUS_PLAYING) return;
+	int mw = GetDrawStringWidth(state->msg.c_str(), state->msg.size());
+	DrawBox(MSG_BOX_CENTER_X - mw / 2 - MSG_BOX_PADDING_X, MSG_BOX_Y_TOP,
+	        MSG_BOX_CENTER_X + mw / 2 + MSG_BOX_PADDING_X, MSG_BOX_Y_BOTTOM, GetColor(150, 150, 150), TRUE);
+	DrawString(MSG_BOX_CENTER_X - mw / 2, MSG_TEXT_Y, state->msg.c_str(), ColorWhite);
+}
+
+//右パネルの BLACK/WHITE カウントを描画 (優勢な方は数値が赤、引分時はどちらも白)
+void rbDrawCountPanel(ReversiBoard* state) {
+	int pcnum[2] = {};
+	char blackC[32], whiteC[32];
+	rbCountPieces(state, pcnum);
+	_itoa_s(pcnum[0], blackC, sizeof(blackC), 10);
+	_itoa_s(pcnum[1], whiteC, sizeof(whiteC), 10);
+
+	//優勢判定 (1=黒優勢 / 2=白優勢 / 3=引分)
+	int winning = 0;
+	if (pcnum[0] > pcnum[1]) winning = 1;
+	else if (pcnum[0] < pcnum[1]) winning = 2;
+	else winning = 3;
+
+	//BLACK ラベル + 数値 (優勢時のみ赤)
+	DrawString(PANEL_X, PANEL_BLACK_LABEL_Y, "BLACK", ColorWhite);
+	DrawString(PANEL_X, PANEL_BLACK_VALUE_Y, blackC, (winning == 1) ? ColorRed : ColorWhite);
+
+	//WHITE ラベル + 数値 (優勢時のみ赤)
+	DrawString(PANEL_X, PANEL_WHITE_LABEL_Y, "WHITE", ColorWhite);
+	DrawString(PANEL_X, PANEL_WHITE_VALUE_Y, whiteC, (winning == 2) ? ColorRed : ColorWhite);
+}
+
+//"← Now" 矢印で現在の手番を表示 (黒なら BLACK 行に、白なら WHITE 行に)
+void rbDrawTurnIndicator(int turn) {
+	if (turn == GAME_TURN_BLACK) {
+		DrawString(PANEL_TURN_X, PANEL_TURN_BLACK_Y, "← Now", ColorSky);
+	} else if (turn == GAME_TURN_WHITE) {
+		DrawString(PANEL_TURN_X, PANEL_TURN_WHITE_Y, "← Now", ColorSky);
+	}
+}

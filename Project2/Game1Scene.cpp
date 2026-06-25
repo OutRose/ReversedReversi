@@ -1,7 +1,6 @@
 ﻿#include "GameMain.h"
 #include "GameSceneMain.h"
 #include "Game1Scene.h"
-#include <stdlib.h>		//_itoa_s 用
 
 //盤面ステート + 状態変数 (ファイルスコープ static、シーン入場/再入場時に init で初期化)
 //詳細は GameSceneMain.h の ReversiBoard / GAME_STATUS / GAME_TURN を参照
@@ -93,97 +92,20 @@ void moveGame1Scene()
 	}
 }
 
-//	レンダリング処理 (γ-1 で move から分離、毎フレーム描画専用)
+//	レンダリング処理 (δ-4 で共通描画ヘルパに圧縮、Game1 専用は終了メッセージのみ)
 void renderGame1Scene(void)
 {
-	//プログラムで格子を描く（上ではうまく行かない）
-	//第1段階：四方の枠線とフィールド緑化 (Game1 は暗緑、Game2 は明緑)
-	DrawBox(BOARD_ORIGIN_X, BOARD_ORIGIN_Y, BOARD_END_PX, BOARD_END_PX, GetColor(0, 100, 20), TRUE);
-	int i;
-	for (i = 0; i < 3; i++)
-	{
-		DrawLine(BOARD_ORIGIN_X, BOARD_ORIGIN_Y, BOARD_END_PX, BOARD_ORIGIN_Y, ColorWhite);
-		DrawLine(BOARD_ORIGIN_X, BOARD_ORIGIN_Y, BOARD_ORIGIN_X, BOARD_END_PX, ColorWhite);
-		DrawLine(BOARD_END_PX, BOARD_ORIGIN_Y, BOARD_END_PX, BOARD_END_PX, ColorWhite);
-		DrawLine(BOARD_ORIGIN_X, BOARD_END_PX, BOARD_END_PX, BOARD_END_PX, ColorWhite);
-	}
+	//盤面背景 (暗緑) + 枠線 + 格子線
+	rbDrawBoard(GetColor(0, 100, 20));
+	rbDrawGrid();
 
-	//第2段階：縦横の格子
-	int j;
-	int DrawX = BOARD_ORIGIN_X, DrawY = BOARD_ORIGIN_Y;
-	for (i = 0; i < BOARD_SIZE_MAX; i++)
-	{
-		DrawX = DrawX + CELL_PX;
-		DrawLine(DrawX, BOARD_ORIGIN_Y, DrawX, BOARD_END_PX, ColorWhite);
-	}
-	for (j = 0; j < BOARD_SIZE_MAX; j++)
-	{
-		DrawY = DrawY + CELL_PX;
-		DrawLine(BOARD_ORIGIN_X, DrawY, BOARD_END_PX, DrawY, ColorWhite);
-	}
+	//コマ・メッセージ箱・カウントパネル・ターンインジケータ
+	rbDrawPieces(&state, pieces);
+	rbDrawMsg(&state, status);
+	rbDrawCountPanel(&state);
+	rbDrawTurnIndicator(turn);
 
-	for (int y = 0; y < BOARD_SIZE; y++) for (int x = 0; x < BOARD_SIZE; x++)
-	{
-		//コマ表示部
-		if (state.board[y][x]) DrawGraph(x * CELL_PX + BOARD_ORIGIN_X, y * CELL_PX + BOARD_ORIGIN_Y, pieces[state.board[y][x] - 1], TRUE);
-	}
-
-	if (status > 1)
-	{
-		//ターンメッセージ表示部 (PLAYING 以外の状態でメッセージ箱を表示)
-		int mw = GetDrawStringWidth(state.msg.c_str(), state.msg.size());
-
-		DrawBox(MSG_BOX_CENTER_X - mw / 2 - MSG_BOX_PADDING_X, MSG_BOX_Y_TOP, MSG_BOX_CENTER_X + mw / 2 + MSG_BOX_PADDING_X, MSG_BOX_Y_BOTTOM, GetColor(150, 150, 150), TRUE);
-		DrawString(MSG_BOX_CENTER_X - mw / 2, MSG_TEXT_Y, state.msg.c_str(), ColorWhite);
-	}
-
-	//白と黒のコマ数を数え、両者の取得数を表示する（ついでに優勢な方を赤く）
-
-	int pcnum[2] = {};
-	char blackC[32], whiteC[32];
-	rbCountPieces(&state, pcnum);
-	_itoa_s(pcnum[0], blackC, sizeof(blackC), 10);
-	_itoa_s(pcnum[1], whiteC, sizeof(whiteC), 10);
-
-	//優勢判定
-	int winning = 0;
-
-	if (pcnum[0] > pcnum[1]) winning = 1;
-	else if (pcnum[0] < pcnum[1]) winning = 2;
-	else winning = 3;
-
-	//優勢な方は文字が赤くなる
-	DrawString(PANEL_X, PANEL_BLACK_LABEL_Y, "BLACK", ColorWhite);
-	if (winning == 1)
-	{
-		DrawString(PANEL_X, PANEL_BLACK_VALUE_Y, blackC, ColorRed);
-	}
-	else if (winning == 2 || winning == 3)
-	{
-		DrawString(PANEL_X, PANEL_BLACK_VALUE_Y, blackC, ColorWhite);
-	}
-
-	DrawString(PANEL_X, PANEL_WHITE_LABEL_Y, "WHITE", ColorWhite);
-	if (winning == 2)
-	{
-		DrawString(PANEL_X, PANEL_WHITE_VALUE_Y, whiteC, ColorRed);
-	}
-	else if (winning == 1 || winning == 3)
-	{
-		DrawString(PANEL_X, PANEL_WHITE_VALUE_Y, whiteC, ColorWhite);
-	}
-
-	//誰のターンかを表示する
-	if (turn == GAME_TURN_BLACK)
-	{
-		DrawString(PANEL_TURN_X, PANEL_TURN_BLACK_Y, "← Now", ColorSky);
-	}
-	else if (turn == GAME_TURN_WHITE)
-	{
-		DrawString(PANEL_TURN_X, PANEL_TURN_WHITE_Y, "← Now", ColorSky);
-	}
-
-	//ゲーム終了時のメニュー復帰ガイド (γ-1 で X キー復帰経路追加)
+	//Game1 専用: ゲーム終了時のメニュー復帰ガイド (γ-1 で X キー復帰経路追加)
 	if (status == GAME_STATUS_FINISHED)
 	{
 		DrawString(PANEL_X, PANEL_END_MSG_GAME1_Y, "Xキーでメニュー\nESCキーで終了", ColorWhite);
