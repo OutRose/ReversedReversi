@@ -1,8 +1,7 @@
 ﻿#include "GameMain.h"
 #include "GameSceneMain.h"
 #include "Game2Scene.h"
-#include <math.h>
-#include <stdio.h>
+#include <stdlib.h>
 #include <string>
 
 int SqBoardA[12][12];  //フィールドは12×12マス
@@ -11,13 +10,8 @@ int SqBoardA[12][12];  //フィールドは12×12マス
 std::string msg2;	  //メッセージ格納用変数
 int msg_wait2;		  //メッセージ表示の時間
 
-int CurrentRound = 1;     //ラウンド管理用変数
+GAME_ROUND CurrentRound = GAME_ROUND_FIRST;     //ラウンド管理用変数
 int excuted = 0;        //BGMループ対策用変数
-
-//各種フォント設定
-unsigned int ColorWhite2 = GetColor(255, 255, 255);
-unsigned int ColorRed2 = GetColor(255, 0, 0);
-unsigned int ColorSky2 = GetColor(40, 235, 255);
 
 //外部定義(GameMain.cppにて宣言)
 extern int Input, EdgeInput;
@@ -46,7 +40,7 @@ int putPiece2(int x, int y, int turn, bool put_flag)
 	for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++)
 	{
 		//裏返すことができる敵コマの位置を一時格納しておく配列
-		int wx[12] = { 0 }, wy[12] = { 0 };
+		int wx[BOARD_SIZE] = { 0 }, wy[BOARD_SIZE] = { 0 };
 
 		for (int wn = 0;; wn++)
 		{
@@ -54,7 +48,7 @@ int putPiece2(int x, int y, int turn, bool put_flag)
 			int kx = x + dx * (wn + 1); int ky = y + dy * (wn + 1);
 
 			//チェック位置が盤面からはみ出したり、空き状態の場合は裏返せないのでループ脱出
-			if (kx < 0 || kx > 11 || ky < 0 || ky > 11 || SqBoardA[ky][kx] == 0) break;
+			if (kx < 0 || kx > BOARD_SIZE_MAX || ky < 0 || ky > BOARD_SIZE_MAX || SqBoardA[ky][kx] == 0) break;
 
 			//間に挟まれたコマを実際に裏返す
 			//裏返った数の合計はSUMに加算される
@@ -80,7 +74,7 @@ int putPiece2(int x, int y, int turn, bool put_flag)
 bool isPass2(int turn)
 //ターン実行中のプレイヤーに応じて対応コマをチェックする：1=黒、2=白
 {
-	for (int y = 0; y < 12; y++) for (int x = 0; x < 12; x++) //置けるマスがあるかどうかを検証
+	for (int y = 0; y < BOARD_SIZE; y++) for (int x = 0; x < BOARD_SIZE; x++) //置けるマスがあるかどうかを検証
 	{
 		if (putPiece2(x, y, turn, false)) return false;      //パス不要ならばFALSEが返される
 	}
@@ -112,7 +106,7 @@ bool think01(int turn)
 			GetMousePoint(&mx, &my);  //マウスポインターの場所を取得
 
 			//ポインターのある場所のマスに置く
-			if (putPiece2(mx / 48, my / 48, turn, true)) return true;
+			if (putPiece2(mx / CELL_PX, my / CELL_PX, turn, true)) return true;
 		}
 	}
 	else mouse_flag = false;  //そうでなければフラグはしまう
@@ -126,7 +120,7 @@ bool think02(int turn)
 	//MAX＝取得できるコマの最大数　wx, wy＝一番多く取れるコマを置く場所
 	int max = 0, wx, wy;
 
-	for (int y = 0; y < 12; y++) for (int x = 0; x < 12; x++)
+	for (int y = 0; y < BOARD_SIZE; y++) for (int x = 0; x < BOARD_SIZE; x++)
 	{
 		//盤面を順にチェックして、取得可能なコマ数を得る
 		int num = putPiece2(x, y, turn, false);
@@ -153,7 +147,7 @@ void setMsg2(int turn, int type)
 	std::string type_str[] = { "TURN", "PASS", "WINS!" };
 	msg2 = turn_str[turn - 1];
 	if (turn != 3) msg2 += " " + type_str[type];
-	msg_wait2 = 60;
+	msg_wait2 = MSG_WAIT_FRAMES;
 }
 
 // 勝敗チェック
@@ -165,7 +159,7 @@ int checkResult2()
 	int result = 0;
 
 	//盤面のコマ数を数える。黒のコマをpnum[0]に、白をpnum[1]にセットする。
-	for (int y = 0; y < 12; y++) for (int x = 0; x < 12; x++)
+	for (int y = 0; y < BOARD_SIZE; y++) for (int x = 0; x < BOARD_SIZE; x++)
 	{
 		if (SqBoardA[y][x] > 0) pnum[SqBoardA[y][x] - 1]++;
 	}
@@ -189,8 +183,8 @@ void removePiece()
 	for (int j = 0; j < 96; j++)
 	{
 		int rmx, rmy;
-		rmx = GetRand(11);
-		rmy = GetRand(11);
+		rmx = GetRand(BOARD_SIZE_MAX);
+		rmy = GetRand(BOARD_SIZE_MAX);
 
 		SqBoardA[rmy][rmx] = 0;
 	}
@@ -207,17 +201,17 @@ void changeBGM()
 void moveGame2Scene()
 {
 	int pieces[2];  //画像保存用変数　0=黒　1=白
-	int status = 2; // 1:プレイ中 2:TURNメッセージ中 3:パスメッセージ中 4:終了
-	int turn = 1;   // 1:黒ターン 2:白ターン
+	GAME_STATUS status = GAME_STATUS_TURN_MSG; //プレイ前は TURN メッセージから入る
+	GAME_TURN turn = GAME_TURN_BLACK;          //先手は黒
 
 	//画面描画の準備
 	SetDrawScreen(DX_SCREEN_BACK);
 	ChangeFont("ＭＳ 明朝");
 
-	LoadDivGraph("res/piece.png", 2, 2, 1, 47, 47, pieces); //画像読み込み：コマ（1つを分割）
+	LoadDivGraph("res/piece.png", 2, 2, 1, PIECE_SIZE_PX, PIECE_SIZE_PX, pieces); //画像読み込み：コマ（1つを分割）
 
-	SqBoardA[5][5] = SqBoardA[6][6] = 1;      //初期コマを盤上にセット
-	SqBoardA[6][5] = SqBoardA[5][6] = 2;
+	SqBoardA[BOARD_CENTER_LOW][BOARD_CENTER_LOW] = SqBoardA[BOARD_CENTER_HIGH][BOARD_CENTER_HIGH] = 1;      //初期コマを盤上にセット
+	SqBoardA[BOARD_CENTER_HIGH][BOARD_CENTER_LOW] = SqBoardA[BOARD_CENTER_LOW][BOARD_CENTER_HIGH] = 2;
 
 	setMsg2(turn, 0);
 
@@ -230,11 +224,11 @@ void moveGame2Scene()
 
 		switch (status)
 		{
-		case 1:               //プレイモードに入る
+		case GAME_STATUS_PLAYING:               //プレイモードに入る
 			if (isPass2(turn)) //パスと判断された場合
 			{
 				setMsg2(turn, 1); //その時点のプレイヤーにパスを宣告する
-				status = 3;      //パスフェイズ移行
+				status = GAME_STATUS_PASS_MSG;   //パスフェイズ移行
 			}
 			else
 			{
@@ -249,37 +243,39 @@ void moveGame2Scene()
 
 				if ((*think[turn - 1])(turn))//思考ルーチンを呼び出す
 				{
-					turn = 3 - turn; status = 2; //黒、白のターンを入れ替えて次へ
+					turn = (GAME_TURN)(3 - (int)turn); //黒、白のターンを入れ替えて次へ
+					status = GAME_STATUS_TURN_MSG;
 					setMsg2(turn, 0);
 				}
 			}
 
-			if (checkResult2()) status = 4;
+			if (checkResult2()) status = GAME_STATUS_FINISHED;
 			break;
 
-		case 2:     //TURNメッセージ表示中の場合
-			if (msg_wait2 > 0) msg_wait2--;   //msg_waitの分だけカウントする
-			else status = 1;                //カウントが終了したらプレイに移行する
+		case GAME_STATUS_TURN_MSG: //TURNメッセージ表示中の場合
+			if (msg_wait2 > 0) msg_wait2--;       //msg_waitの分だけカウントする
+			else status = GAME_STATUS_PLAYING;    //カウントが終了したらプレイに移行する
 			break;
 
-		case 3:     //PASSと判定され、メッセージが表示される
-			if (msg_wait2 > 0) msg_wait2--;   //msg_waitの分だけカウントする
+		case GAME_STATUS_PASS_MSG: //PASSと判定され、メッセージが表示される
+			if (msg_wait2 > 0) msg_wait2--;       //msg_waitの分だけカウントする
 			else
 			{
-				turn = 3 - turn; status = 2;//カウントが終了したらターンを移行、次へ
+				turn = (GAME_TURN)(3 - (int)turn); //カウントが終了したらターンを移行、次へ
+				status = GAME_STATUS_TURN_MSG;
 				setMsg2(turn, 0);
 			}
 			break;
-		case 4:
-			if (CurrentRound == 1)
+		case GAME_STATUS_FINISHED:
+			if (CurrentRound == GAME_ROUND_FIRST)
 			{
 				WaitTimer(4000); //処理を待つ(ミリ秒)
 				//ラウンド移行処理を行う
 				removePiece();	//ピースを消し
-				CurrentRound++;	//ラウンドカウントアップ
-				status = 2;		//ステータスをプレイ中扱いに戻す
+				CurrentRound = GAME_ROUND_SECOND; //ラウンドカウントアップ
+				status = GAME_STATUS_TURN_MSG;    //ステータスをプレイ中扱いに戻す
 			}
-			else if (CurrentRound == 2)
+			else if (CurrentRound == GAME_ROUND_SECOND)
 			{
 				//ラウンド2終了時
 				//終了待機状態へ飛ぶ
@@ -298,10 +294,10 @@ void moveGame2Scene()
 			int i;
 			for (i = 0; i < 3; i++)
 			{
-				DrawLine(5, 5, 580, 5, ColorWhite2);
-				DrawLine(5, 5, 5, 580, ColorWhite2);
-				DrawLine(580, 5, 580, 580, ColorWhite2);
-				DrawLine(5, 580, 580, 580, ColorWhite2);
+				DrawLine(5, 5, 580, 5, ColorWhite);
+				DrawLine(5, 5, 5, 580, ColorWhite);
+				DrawLine(580, 5, 580, 580, ColorWhite);
+				DrawLine(5, 580, 580, 580, ColorWhite);
 			}
 		}
 
@@ -312,15 +308,15 @@ void moveGame2Scene()
 		for (i = 0; i < 11; i++)
 		{
 			DrawX = DrawX + DrawGap;
-			DrawLine(DrawX, 5, DrawX, 580, ColorWhite2);
+			DrawLine(DrawX, 5, DrawX, 580, ColorWhite);
 		}
 		for (j = 0; j < 11; j++)
 		{
 			DrawY = DrawY + DrawGap;
-			DrawLine(5, DrawY, 580, DrawY, ColorWhite2);
+			DrawLine(5, DrawY, 580, DrawY, ColorWhite);
 		}
 
-		for (int y = 0; y < 12; y++) for (int x = 0; x < 12; x++)
+		for (int y = 0; y < BOARD_SIZE; y++) for (int x = 0; x < BOARD_SIZE; x++)
 		{
 			//コマ表示部
 			if (SqBoardA[y][x]) DrawGraph(x * 48 + 5, y * 48 + 5, pieces[SqBoardA[y][x] - 1], TRUE);
@@ -332,19 +328,19 @@ void moveGame2Scene()
 			int mw = GetDrawStringWidth(msg2.c_str(), msg2.size());
 
 			DrawBox(192 - mw / 2 - 30, 630, 192 + mw / 2 + 30, 655, GetColor(150, 150, 150), TRUE);
-			DrawString(192 - mw / 2, 620, msg2.c_str(), ColorWhite2);
+			DrawString(192 - mw / 2, 620, msg2.c_str(), ColorWhite);
 		}
 
 		//白と黒のコマ数を数え、両者の取得数を表示する（ついでに優勢な方を赤く）
 		{
 			int pcnum[2] = {};
 			char blackC[32], whiteC[32];
-			for (int y = 0; y < 12; y++) for (int x = 0; x < 12; x++)
+			for (int y = 0; y < BOARD_SIZE; y++) for (int x = 0; x < BOARD_SIZE; x++)
 			{
 				if (SqBoardA[y][x] > 0) pcnum[SqBoardA[y][x] - 1]++;
 			}
-			itoa(pcnum[0], blackC, 10);
-			itoa(pcnum[1], whiteC, 10);
+			_itoa_s(pcnum[0], blackC, sizeof(blackC), 10);
+			_itoa_s(pcnum[1], whiteC, sizeof(whiteC), 10);
 
 			//優勢判定
 			int winning = 0;
@@ -354,75 +350,75 @@ void moveGame2Scene()
 			else winning = 3;
 
 			//優勢な方は文字が赤くなる
-			DrawString(590, 5, "BLACK", ColorWhite2);
+			DrawString(590, 5, "BLACK", ColorWhite);
 			if (winning == 1)
 			{
-				DrawString(590, 40, blackC, ColorRed2);
+				DrawString(590, 40, blackC, ColorRed);
 			}
 			else if (winning == 2 || winning == 3)
 			{
-				DrawString(590, 40, blackC, ColorWhite2);
+				DrawString(590, 40, blackC, ColorWhite);
 			}
 
-			DrawString(590, 90, "WHITE", ColorWhite2);
+			DrawString(590, 90, "WHITE", ColorWhite);
 			if (winning == 2)
 			{
-				DrawString(590, 125, whiteC, ColorRed2);
+				DrawString(590, 125, whiteC, ColorRed);
 			}
 			else if (winning == 1 || winning == 3)
 			{
-				DrawString(590, 125, whiteC, ColorWhite2);
+				DrawString(590, 125, whiteC, ColorWhite);
 			}
 		}
 
 		{
 			//誰のターンかを表示する
-			if (turn == 1)
+			if (turn == GAME_TURN_BLACK)
 			{
-				DrawString(680, 40, "← Now", ColorSky2);
+				DrawString(680, 40, "← Now", ColorSky);
 			}
-			else if (turn == 2)
+			else if (turn == GAME_TURN_WHITE)
 			{
-				DrawString(680, 125, "← Now", ColorSky2);
+				DrawString(680, 125, "← Now", ColorSky);
 			}
 		}
 
 		//現在のラウンド数を表示
-		DrawString(590, 220, "Round: ", ColorWhite2);
-		if (CurrentRound == 2)
+		DrawString(590, 220, "Round: ", ColorWhite);
+		if (CurrentRound == GAME_ROUND_SECOND)
 		{
-			DrawFormatString(710, 220, ColorRed2, "%d", CurrentRound);
+			DrawFormatString(710, 220, ColorRed, "%d", CurrentRound);
 		}
-		else if (CurrentRound == 1)
+		else if (CurrentRound == GAME_ROUND_FIRST)
 		{
-			DrawFormatString(710, 220, ColorWhite2, "%d", CurrentRound);
+			DrawFormatString(710, 220, ColorWhite, "%d", CurrentRound);
 		}
 
 		//ゲーム終了時、閉じてもらうよう要請する
-		if (status == 4 && CurrentRound == 2)
+		if (status == GAME_STATUS_FINISHED && CurrentRound == GAME_ROUND_SECOND)
 		{
-			DrawString(590, 330, "ESCキーを\n押して終了\nしてください", ColorWhite2);
+			DrawString(590, 330, "ESCキーを\n押して終了\nしてください", ColorWhite);
 		}
-		else if (status == 4 && CurrentRound == 1)
+		else if (status == GAME_STATUS_FINISHED && CurrentRound == GAME_ROUND_FIRST)
 		{
 			//表示するメッセージは乱数で決定する
 			int msgRand = GetRand(2);
 			if (msgRand == 0)
 			{
-				DrawString(590, 330, "まだだ……！\nまだ終わらん\nよ！", ColorWhite2);
+				DrawString(590, 330, "まだだ……！\nまだ終わらん\nよ！", ColorWhite);
 			}
 			else if (msgRand == 1)
 			{
-				DrawString(590, 330, "ここまでか？\n……いや！\nまだだ！", ColorWhite2);
+				DrawString(590, 330, "ここまでか？\n……いや！\nまだだ！", ColorWhite);
 			}
 			else if (msgRand == 2)
 			{
-				DrawString(590, 330, "ノーカウント\nノーカウント\nなんだ…！！", ColorWhite2);
+				DrawString(590, 330, "ノーカウント\nノーカウント\nなんだ…！！", ColorWhite);
 			}
 		}
 
 		//BGMを変更する
-		if (CurrentRound == 2)
+		if (CurrentRound == GAME_ROUND_SECOND)
 		{
 			if (excuted == 0)
 			{

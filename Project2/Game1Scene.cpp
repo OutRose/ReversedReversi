@@ -1,8 +1,7 @@
 ﻿#include "GameMain.h"
 #include "GameSceneMain.h"
 #include "Game1Scene.h"
-#include <math.h>
-#include <stdio.h>
+#include <stdlib.h>
 #include <string>
 
 int SqBoard[12][12];  //フィールドは12×12マス
@@ -12,9 +11,6 @@ std::string msg;	  //メッセージ格納用変数
 int msg_wait;		  //メッセージ表示の時間
 
 //各種フォント設定
-unsigned int ColorWhite = GetColor(255, 255, 255);
-unsigned int ColorRed = GetColor(255, 0, 0);
-unsigned int ColorSky = GetColor(40, 235, 255);
 
 //外部定義(GameMain.cppにて宣言)
 extern int Input, EdgeInput;
@@ -43,7 +39,7 @@ int putPiece(int x, int y, int turn, bool put_flag)
 	for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++)
 	{
 		//裏返すことができる敵コマの位置を一時格納しておく配列
-		int wx[12], wy[12];
+		int wx[BOARD_SIZE], wy[BOARD_SIZE];
 
 		for (int wn = 0;; wn++)
 		{
@@ -51,7 +47,7 @@ int putPiece(int x, int y, int turn, bool put_flag)
 			int kx = x + dx * (wn + 1); int ky = y + dy * (wn + 1);
 
 			//チェック位置が盤面からはみ出したり、空き状態の場合は裏返せないのでループ脱出
-			if (kx < 0 || kx > 11 || ky < 0 || ky > 11 || SqBoard[ky][kx] == 0) break;
+			if (kx < 0 || kx > BOARD_SIZE_MAX || ky < 0 || ky > BOARD_SIZE_MAX || SqBoard[ky][kx] == 0) break;
 
 			//間に挟まれたコマを実際に裏返す
 			//裏返った数の合計はSUMに加算される
@@ -77,7 +73,7 @@ int putPiece(int x, int y, int turn, bool put_flag)
 bool isPass(int turn)
 //ターン実行中のプレイヤーに応じて対応コマをチェックする：1=黒、2=白
 {
-	for (int y = 0; y < 12; y++) for (int x = 0; x < 12; x++) //置けるマスがあるかどうかを検証
+	for (int y = 0; y < BOARD_SIZE; y++) for (int x = 0; x < BOARD_SIZE; x++) //置けるマスがあるかどうかを検証
 	{
 		if (putPiece(x, y, turn, false)) return false;      //パス不要ならばFALSEが返される
 	}
@@ -109,7 +105,7 @@ bool think1(int turn)
 			GetMousePoint(&mx, &my);  //マウスポインターの場所を取得
 
 			//ポインターのある場所のマスに置く
-			if (putPiece(mx / 48, my / 48, turn, true)) return true;
+			if (putPiece(mx / CELL_PX, my / CELL_PX, turn, true)) return true;
 		}
 	}
 	else mouse_flag = false;  //そうでなければフラグはしまう
@@ -123,7 +119,7 @@ bool think2(int turn)
 	//MAX＝取得できるコマの最大数　wx, wy＝一番多く取れるコマを置く場所
 	int max = 0, wx, wy;
 
-	for (int y = 0; y < 12; y++) for (int x = 0; x < 12; x++)
+	for (int y = 0; y < BOARD_SIZE; y++) for (int x = 0; x < BOARD_SIZE; x++)
 	{
 		//盤面を順にチェックして、取得可能なコマ数を得る
 		int num = putPiece(x, y, turn, false);
@@ -150,7 +146,7 @@ void setMsg(int turn, int type)
 	std::string type_str[] = { "TURN", "PASS", "WINS!" };
 	msg = turn_str[turn - 1];
 	if (turn != 3) msg += " " + type_str[type];
-	msg_wait = 60;
+	msg_wait = MSG_WAIT_FRAMES;
 }
 
 // 勝敗チェック
@@ -162,7 +158,7 @@ int checkResult()
 	int result = 0;
 
 	//盤面のコマ数を数える。黒のコマをpnum[0]に、白をpnum[1]にセットする。
-	for (int y = 0; y < 12; y++) for (int x = 0; x < 12; x++)
+	for (int y = 0; y < BOARD_SIZE; y++) for (int x = 0; x < BOARD_SIZE; x++)
 	{
 		if (SqBoard[y][x] > 0) pnum[SqBoard[y][x] - 1]++;
 	}
@@ -184,17 +180,17 @@ int checkResult()
 void moveGame1Scene()
 {
 	int pieces[2];  //画像保存用変数　0=黒　1=白
-	int status = 2; // 1:プレイ中 2:TURNメッセージ中 3:パスメッセージ中 4:終了
-	int turn = 1;   // 1:黒ターン 2:白ターン
+	GAME_STATUS status = GAME_STATUS_TURN_MSG; //プレイ前は TURN メッセージから入る
+	GAME_TURN turn = GAME_TURN_BLACK;          //先手は黒
 
 	//画面描画の準備
 	SetDrawScreen(DX_SCREEN_BACK);
 	ChangeFont("ＭＳ 明朝");
 
-	LoadDivGraph("res/piece.png", 2, 2, 1, 47, 47, pieces); //画像読み込み：コマ（1つを分割）
+	LoadDivGraph("res/piece.png", 2, 2, 1, PIECE_SIZE_PX, PIECE_SIZE_PX, pieces); //画像読み込み：コマ（1つを分割）
 
-	SqBoard[5][5] = SqBoard[6][6] = 1;      //初期コマを盤上にセット
-	SqBoard[6][5] = SqBoard[5][6] = 2;
+	SqBoard[BOARD_CENTER_LOW][BOARD_CENTER_LOW] = SqBoard[BOARD_CENTER_HIGH][BOARD_CENTER_HIGH] = 1;      //初期コマを盤上にセット
+	SqBoard[BOARD_CENTER_HIGH][BOARD_CENTER_LOW] = SqBoard[BOARD_CENTER_LOW][BOARD_CENTER_HIGH] = 2;
 
 	setMsg(turn, 0);
 
@@ -207,11 +203,11 @@ void moveGame1Scene()
 
 		switch (status)
 		{
-		case 1:               //プレイモードに入る
+		case GAME_STATUS_PLAYING:               //プレイモードに入る
 			if (isPass(turn)) //パスと判断された場合
 			{
 				setMsg(turn, 1); //その時点のプレイヤーにパスを宣告する
-				status = 3;      //パスフェイズ移行
+				status = GAME_STATUS_PASS_MSG;   //パスフェイズ移行
 			}
 			else
 			{
@@ -227,28 +223,30 @@ void moveGame1Scene()
 
 				if ((*think[turn - 1])(turn))//思考ルーチンを呼び出す
 				{
-					turn = 3 - turn; status = 2; //黒、白のターンを入れ替えて次へ
+					turn = (GAME_TURN)(3 - (int)turn); //黒、白のターンを入れ替えて次へ
+					status = GAME_STATUS_TURN_MSG;
 					setMsg(turn, 0);
 				}
 			}
 
-			if (checkResult()) status = 4;
+			if (checkResult()) status = GAME_STATUS_FINISHED;
 			break;
 
-		case 2:     //TURNメッセージ表示中の場合
-			if (msg_wait > 0) msg_wait--;   //msg_waitの分だけカウントする
-			else status = 1;                //カウントが終了したらプレイに移行する
+		case GAME_STATUS_TURN_MSG: //TURNメッセージ表示中の場合
+			if (msg_wait > 0) msg_wait--;       //msg_waitの分だけカウントする
+			else status = GAME_STATUS_PLAYING;  //カウントが終了したらプレイに移行する
 			break;
 
-		case 3:     //PASSと判定され、メッセージが表示される
-			if (msg_wait > 0) msg_wait--;   //msg_waitの分だけカウントする
+		case GAME_STATUS_PASS_MSG: //PASSと判定され、メッセージが表示される
+			if (msg_wait > 0) msg_wait--;       //msg_waitの分だけカウントする
 			else
 			{
-				turn = 3 - turn; status = 2;//カウントが終了したらターンを移行、次へ
+				turn = (GAME_TURN)(3 - (int)turn); //カウントが終了したらターンを移行、次へ
+				status = GAME_STATUS_TURN_MSG;
 				setMsg(turn, 0);
 			}
 			break;
-		case 4:     //終了となった場合
+		case GAME_STATUS_FINISHED: //終了となった場合
 			WaitTimer(2000); //処理を待つ(ミリ秒)
 			break;
 		}
@@ -283,7 +281,7 @@ void moveGame1Scene()
 			DrawLine(5, DrawY, 580, DrawY, ColorWhite);
 		}
 
-		for (int y = 0; y < 12; y++) for (int x = 0; x < 12; x++)
+		for (int y = 0; y < BOARD_SIZE; y++) for (int x = 0; x < BOARD_SIZE; x++)
 		{
 			//コマ表示部
 			if (SqBoard[y][x]) DrawGraph(x * 48 + 5, y * 48 + 5, pieces[SqBoard[y][x] - 1], TRUE);
@@ -302,12 +300,12 @@ void moveGame1Scene()
 
 		int pcnum[2] = {};
 		char blackC[32], whiteC[32];
-		for (int y = 0; y < 12; y++) for (int x = 0; x < 12; x++)
+		for (int y = 0; y < BOARD_SIZE; y++) for (int x = 0; x < BOARD_SIZE; x++)
 		{
 			if (SqBoard[y][x] > 0) pcnum[SqBoard[y][x] - 1]++;
 		}
-		itoa(pcnum[0], blackC, 10);
-		itoa(pcnum[1], whiteC, 10);
+		_itoa_s(pcnum[0], blackC, sizeof(blackC), 10);
+		_itoa_s(pcnum[1], whiteC, sizeof(whiteC), 10);
 
 		//優勢判定
 		int winning = 0;
@@ -338,17 +336,17 @@ void moveGame1Scene()
 		}
 
 		//誰のターンかを表示する
-		if (turn == 1)
+		if (turn == GAME_TURN_BLACK)
 		{
 			DrawString(680, 40, "← Now", ColorSky);
 		}
-		else if (turn == 2)
+		else if (turn == GAME_TURN_WHITE)
 		{
 			DrawString(680, 125, "← Now", ColorSky);
 		}
 
 		//ゲーム終了時、閉じてもらうよう要請する
-		if (status == 4)
+		if (status == GAME_STATUS_FINISHED)
 		{
 			DrawString(590, 150, "閉じるボタン\nを押して終了\nしてください", ColorWhite);
 		}

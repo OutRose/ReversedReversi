@@ -15,7 +15,7 @@ extern int Input, EdgeInput;
 //シーン開始前の初期化を行う
 BOOL initMenuScene(void)
 {
-	SetFontSize(32);
+	SetFontSize(FONT_SIZE_DEFAULT);
 	ChangeFontType(DX_FONTTYPE_ANTIALIASING_EDGE_8X8);
 
 	selectedGame = 0;

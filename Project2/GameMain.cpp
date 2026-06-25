@@ -13,6 +13,14 @@ int Input;
 //入力状態 EdgeInput:1回のみ
 int EdgeInput;
 
+//色変数 (GameMain.h で extern 宣言、全シーン共通)
+//注意: GetColor() の戻り値は SetGraphMode 設定後の bit 深度に依存する。
+//      ファイルスコープでの動的初期化は SetGraphMode 前に走るが、現状の RGB 値ならば
+//      bit 深度に依らず一意の結果を返すので動作不変 (16/24/32 bit 全てで同じ)。
+unsigned int ColorWhite = GetColor(255, 255, 255);
+unsigned int ColorRed   = GetColor(255, 0, 0);
+unsigned int ColorSky   = GetColor(40, 235, 255);
+
 //WinMain関数
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_  LPSTR lpCmdLine, _In_ int nCmdShow)
 {
@@ -27,7 +35,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 	SetWindowSizeChangeEnableFlag(true);
 
 	//ウィンドウサイズをセット
-	SetGraphMode(800, 700, 16);
+	SetGraphMode(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_BPP);
 
 	//ウィンドウタイトル
 	SetMainWindowText("Reverse Reversi 1.1");
@@ -55,7 +63,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 		ClearDrawScreen();
 
 		// １/６０秒立つまで待つ
-		while (GetNowCount() - FrameStartTime < 1000 / 60) {}
+		while (GetNowCount() - FrameStartTime < MS_PER_SEC / FPS) {}
 		// 現在のカウント値を保存
 		FrameStartTime = GetNowCount();
 		// 入力状態を更新
