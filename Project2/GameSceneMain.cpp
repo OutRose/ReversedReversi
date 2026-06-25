@@ -1,5 +1,6 @@
 ﻿#include "GameSceneMain.h"
 #include <assert.h>		//changeScene 範囲外チェックのアサート用 (Debug ビルドでのみ発火)
+#include <stdlib.h>		//rb* 関数で GetRand と組み合わせ + 将来の汎用ユーティリティ用
 
 //全てのシーンのヘッダファイルをインクルードする
 #include "Game1Scene.h"
@@ -135,4 +136,158 @@ void renderCurrentScene(void) {
 //３(6) 現在のシーンの削除処理
 void releaseCurrentScene(void) {
 	if (isValidSceneIndex(sceneNo)) sceneTable[sceneNo].release();
+}
+
+//=========================================================================
+//盤面ロジック (Game1Scene/Game2Scene 共有、β-D-5 でクローン統合)
+//=========================================================================
+
+//盤面初期化 (ゼロクリア + 中央 4 駒配置 + メッセージリセット)
+//シーンの move 関数冒頭で 1 度呼ばれる想定 (静的ゼロ初期化と組み合わせる)
+void rbInit(ReversiBoard* state) {
+	for (int y = 0; y < BOARD_SIZE; y++) {
+		for (int x = 0; x < BOARD_SIZE; x++) {
+			state->board[y][x] = 0;
+		}
+	}
+	//初期コマを盤上中央に 4 つセット (左上/右下=黒、右上/左下=白の対角配置)
+	state->board[BOARD_CENTER_LOW][BOARD_CENTER_LOW]   = GAME_TURN_BLACK;
+	state->board[BOARD_CENTER_HIGH][BOARD_CENTER_HIGH] = GAME_TURN_BLACK;
+	state->board[BOARD_CENTER_HIGH][BOARD_CENTER_LOW]  = GAME_TURN_WHITE;
+	state->board[BOARD_CENTER_LOW][BOARD_CENTER_HIGH]  = GAME_TURN_WHITE;
+	state->msg.clear();
+	state->msg_wait = 0;
+}
+
+//指定位置にコマを置く (put_flag=false ならシミュレーションのみ、戻り値: 裏返ったコマ数)
+//x, y = コマを置く座標、turn = 順番 (1=黒、2=白)
+int rbPutPiece(ReversiBoard* state, int x, int y, int turn, bool put_flag) {
+	int sum = 0;
+
+	//既にコマが置かれているマスには置けない
+	if (state->board[y][x] > 0) return 0;
+
+	//置いた場所から上下左右、斜めの 8 方向に盤面をチェック (dx, dy で方向を示す)
+	for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) {
+		//裏返すことができる敵コマの位置を一時格納しておく配列
+		int wx[BOARD_SIZE], wy[BOARD_SIZE];
+
+		for (int wn = 0;; wn++) {
+			//kx, ky でチェックする場所を示す
+			int kx = x + dx * (wn + 1);
+			int ky = y + dy * (wn + 1);
+
+			//チェック位置が盤面外か空きマスなら裏返せないのでループ脱出
+			if (kx < 0 || kx > BOARD_SIZE_MAX || ky < 0 || ky > BOARD_SIZE_MAX || state->board[ky][kx] == 0) break;
+
+			//間に挟まれたコマを実際に裏返す (put_flag=true 時のみ書き換え、sum には wn を加算)
+			if (state->board[ky][kx] == turn) {
+				if (put_flag) for (int i = 0; i < wn; i++) state->board[wy[i]][wx[i]] = turn;
+				sum += wn;
+				break;
+			}
+
+			//敵コマならば裏返せるので、一時的に位置を格納しておく
+			wx[wn] = kx; wy[wn] = ky;
+		}
+	}
+
+	//1 つでも裏返せて、かつ実際に置く指示なら、置いたマスにコマを書き込む
+	if (sum > 0 && put_flag) state->board[y][x] = turn;
+
+	return sum;
+}
+
+//パスチェック (ターン実行中のプレイヤーが置けるマスが無ければ true)
+bool rbIsPass(ReversiBoard* state, int turn) {
+	for (int y = 0; y < BOARD_SIZE; y++) for (int x = 0; x < BOARD_SIZE; x++) {
+		if (rbPutPiece(state, x, y, turn, false)) return false;	//1 か所でも置けるならパス不要
+	}
+	return true;
+}
+
+//プレイヤー思考 (マウス左クリック、戻り値: 実際にコマを置いたら true)
+//mouse_flag は関数内 static として保持し、ボタン押下→離す→再押下のエッジ検知をする
+bool rbThinkPlayer(ReversiBoard* state, int turn) {
+	static bool mouse_flag = false;	//クリックされているかのフラグ (連打防止)
+
+	if (GetMouseInput() & MOUSE_INPUT_LEFT) {
+		if (!mouse_flag) {
+			mouse_flag = true;	//フラグを立てる (押下中)
+			int mx, my;
+			GetMousePoint(&mx, &my);	//マウスポインタの場所を取得
+			//ポインタのある場所のマスに置く (置けたら true 返し、ターン進行)
+			if (rbPutPiece(state, mx / CELL_PX, my / CELL_PX, turn, true)) return true;
+		}
+	} else {
+		mouse_flag = false;	//ボタンが離されたらフラグを下ろす
+	}
+	return false;
+}
+
+//CPU 思考 (最も多く取れるマスに置く、等値時は 1/2 確率で入れ替え)
+bool rbThinkCpu(ReversiBoard* state, int turn) {
+	int max = 0, wx = 0, wy = 0;	//最大取得数と置く座標 (未初期化警告を避けるため 0 初期化)
+
+	for (int y = 0; y < BOARD_SIZE; y++) for (int x = 0; x < BOARD_SIZE; x++) {
+		//盤面を順にチェックして、取得可能なコマ数を得る
+		int num = rbPutPiece(state, x, y, turn, false);
+
+		//現在の最大を超えれば無条件入れ替え。等値なら 1/2 確率で入れ替え (バリエーション)
+		if (max < num || (max == num && GetRand(1) == 0)) {
+			max = num; wx = x; wy = y;
+		}
+	}
+	rbPutPiece(state, wx, wy, turn, true);	//確定したマスに置く
+	return true;
+}
+
+//メッセージセット (turn: 1=BLACK 2=WHITE 3=DRAW、type: 0=TURN 1=PASS 2=WINS!)
+void rbSetMsg(ReversiBoard* state, int turn, int type) {
+	std::string turn_str[] = { "BLACK", "WHITE", "DRAW" };
+	std::string type_str[] = { "TURN", "PASS", "WINS!" };
+	state->msg = turn_str[turn - 1];
+	if (turn != 3) state->msg += " " + type_str[type];	//引き分け時 (turn=3) は "DRAW" のみ
+	state->msg_wait = MSG_WAIT_FRAMES;
+}
+
+//勝敗チェック (戻り値: 0=継続 / 1=黒勝 / 2=白勝 / 3=引分)
+//両プレイヤーがパスで詰みなら終了、コマ数で勝者を判定
+int rbCheckResult(ReversiBoard* state) {
+	int pnum[2] = {};	//pnum[0]=黒、pnum[1]=白
+	int result = 0;
+
+	//盤面のコマ数を数える
+	for (int y = 0; y < BOARD_SIZE; y++) for (int x = 0; x < BOARD_SIZE; x++) {
+		if (state->board[y][x] > 0) pnum[state->board[y][x] - 1]++;
+	}
+
+	//双方ともパス＝終了の合図。勝敗チェックが始まる。
+	if (rbIsPass(state, GAME_TURN_BLACK) && rbIsPass(state, GAME_TURN_WHITE)) {
+		if (pnum[0] > pnum[1]) result = 1;
+		else if (pnum[0] < pnum[1]) result = 2;
+		else result = 3;
+	}
+
+	if (result) rbSetMsg(state, result, 2);	//勝者メッセージをセット
+	return result;
+}
+
+//黒白コマ数カウント (pcnum[0]=黒、pcnum[1]=白)
+//画面表示用、勝敗判定とは別経路 (rbCheckResult 内のカウントは関数内で完結)
+void rbCountPieces(ReversiBoard* state, int pcnum[2]) {
+	pcnum[0] = pcnum[1] = 0;
+	for (int y = 0; y < BOARD_SIZE; y++) for (int x = 0; x < BOARD_SIZE; x++) {
+		if (state->board[y][x] > 0) pcnum[state->board[y][x] - 1]++;
+	}
+}
+
+//ランダム削除 (Game2 まきもどり用、count マスをゼロにする)
+//重複削除が発生するため実削除数は count を下回る可能性があるが、元実装の挙動を維持
+void rbRemovePieces(ReversiBoard* state, int count) {
+	for (int j = 0; j < count; j++) {
+		int rmx = GetRand(BOARD_SIZE_MAX);
+		int rmy = GetRand(BOARD_SIZE_MAX);
+		state->board[rmy][rmx] = 0;
+	}
 }
