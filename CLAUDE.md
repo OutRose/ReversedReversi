@@ -1,6 +1,6 @@
 ﻿# CLAUDE.md — ReversedReversi プロジェクト情報
 
-Visual Studio (MSVC) + DxLib による C++ リバーシゲーム。本体は [Project2.sln](Project2.sln) / [Project2/](Project2/) 配下。タイトルバー表記は「Reverse Reversi 1.5.6」、メニュー描画は「まきもどリバーシ Ver 1.5.6」([Project2/MenuScene.cpp:66](Project2/MenuScene.cpp#L66))。日本語 Windows 環境 (コードページ 932) でビルドする前提。バージョン履歴は [CHANGELOG.md](CHANGELOG.md)、ライセンスは [LICENSE.md](LICENSE.md) (MIT)、公開向け案内は [README.md](README.md) を参照 (採番ルール: フェーズ MINOR + サブターゲット PATCH、ただし**ドキュメント/メタファイル変更のみではバージョン据え置き** — CHANGELOG 冒頭参照)。
+Visual Studio (MSVC) + DxLib による C++ リバーシゲーム。本体は [Project2.sln](Project2.sln) / [Project2/](Project2/) 配下。タイトルバー表記は「Reverse Reversi 1.5.6.1」、メニュー描画は「まきもどリバーシ Ver 1.5.6.1」([Project2/MenuScene.cpp:66](Project2/MenuScene.cpp#L66))。日本語 Windows 環境 (コードページ 932) でビルドする前提。バージョン履歴は [CHANGELOG.md](CHANGELOG.md)、ライセンスは [LICENSE.md](LICENSE.md) (MIT)、公開向け案内は [README.md](README.md) を参照 (採番ルール: フェーズ MINOR + サブターゲット PATCH + **挙動不変なコード変更は SUBPATCH** (4 セグメント、1.5.6.1 で導入)、ドキュメント/メタファイルのみの変更は据え置き — CHANGELOG 冒頭参照)。
 
 姉妹プロジェクトに [TwistTimeStopper](d:\Repositories\TwistTimeStopper) があり、シーン管理の雛形を共有している (元は同じ「Scene管理付き空プロジェクトRev2」テンプレート)。TwistTimeStopper は既に α/β/γ/δ のリファクタを完走しており、共通基盤化のリファレンスとして本ファイル中で頻繁に参照する。
 
@@ -343,7 +343,7 @@ Game1Scene / Game2Scene / Game3Scene では `rbThinkPlayer` ([GameSceneMain.cpp]
 ## 8. DxLib のお作法 (細かい点)
 
 - **フォント**: `SetFontSize(N)` / `ChangeFontType(DX_FONTTYPE_*)` / `ChangeFont("ＭＳ 明朝")` はグローバル状態なので、各シーンの init で必ず設定し直す ([MenuScene.cpp:20-21](Project2/MenuScene.cpp#L20))。**ReversedReversi では `ChangeFont("ＭＳ 明朝")` が毎フレーム呼ばれているシーンがある** (Game1/Game2=まきもどり の render 内) — 本来 init 時 1 回でよく、TwistTimeStopper では init で完結している
-- **色**: `GetColor(R, G, B)` の戻り値 `unsigned int` はキャッシュ。β-D-2 で [GameMain.cpp:20-22](Project2/GameMain.cpp#L20) に `ColorWhite/Red/Sky` を集約定義 + [GameMain.h](Project2/GameMain.h) で `extern` 公開 (旧 `ColorXxx2` 接尾辞は撤廃済)。新規色を追加する際は同じ extern + 定義の構造に合わせる
+- **色**: `GetColor(R, G, B)` の戻り値 `unsigned int` はキャッシュ。β-D-2 で [GameMain.cpp:20-22](Project2/GameMain.cpp#L20) に `ColorWhite/Red/Sky` を集約定義 + [GameMain.h](Project2/GameMain.h) で `extern` 公開 (旧 `ColorXxx2` 接尾辞は撤廃済)。1.5.6.1 (B3) で **ランク章用 4 色** (`ColorBronze/Silver/Gold/Platinum`) + **汎用 UI 用 3 色** (`ColorWarn/Overlay/Hover`) を追加、計 10 色。新規色を追加する際は同じ `ColorXxx` 命名 + extern 宣言 (GameMain.h) + 定義 (GameMain.cpp) の構造に合わせる。**カラーパレットは継続的拡張対象** — 新色 1 つ追加ごとに SUBPATCH バンプ (1.5.6.1 → 1.5.6.2 → ...)、機能と同時追加なら機能側 PATCH バンプに巻き込む方針 ([CHANGELOG.md](CHANGELOG.md) 採番ルール参照)
 - **座標系**: 原点 (0, 0) は **画面左上**。`DrawString(x, y, str, color)` で直接指定
 - **乱数**: `GetRand(n)` で 0〜n-1。シードは起動時に `GetNowCount()` で `SRand` 初期化する慣習 (TwistTimeStopper では `WinMain` 冒頭)
 - **画像**: `LoadGraph` / `LoadDivGraph` の戻り値ハンドル `int` を保持し `DeleteGraph` で解放。γ-1 (2026-06-25) で Game1/Game2 を `LoadDivGraph` → init、`DeleteGraph` → release に整理済 (`static int pieces[2] = { -1, -1 };` でハンドル保持、再入場時の二重ロード防止)。リソースリーク解消
@@ -422,7 +422,7 @@ default: break;  // ← 追加
 Game3 専用ではなく、ふつう/まきもどり/あまちゃんを横断するシステム機能:
 
 1. **プレイヤーランクシステム** — プレイの技巧 (勝敗、取得コマ差、無パス継続、勝った相手の強さ等) に応じて経験値を蓄積、目標値到達でランクアップ。ランク階層案 (英語表記): `NOVICE → APPRENTICE → ADEPT → EXPERT → MASTER → GRAND MASTER` または将棋風 (`級位 → 段位`)。**プレイヤー名 (Game3 の `nameTmp`) はあくまでハンドルネーム**、ランクは別軸の称号として右パネル `PLAYER:` 行と並べて表示する案。実装規模: 大 — 永続化が必須 (`save.dat` 等のバイナリ/INI/JSON、`GameMain` 起動時に読込・終了時に書込)、XP 計算ロジック (`int calcXpGain(int winnerColor, int gain, int passes, ...)` 等)、ランク閾値テーブル、ランクアップ演出、メニュー表示への反映 (タイトル横にランク章を出す等)。要設計検討事項多数 (各モード別に XP 倍率を変えるか / 取り戻しなしモードのみ XP 計上にするか / リセット手段 / モデレーション)
-2. **カラーパレット増設** — 現状 [GameMain.h](Project2/GameMain.h) extern は `ColorWhite/Red/Sky` の 3 色 + 関数内ローカル (オレンジ `(255,165,0)` for ヒント、盤面緑 `(0,100,20)`/`(0,140,20)` for Game1/Game2) のみ。ランクシステム導入や OPTIONS 画面新設、テーマ切替を見据えると追加色が必要 — 例: ランク章用の青銅/銀/金/プラチナ系 (`(205,127,50) / (192,192,192) / (255,215,0) / (229,228,226)`)、警告系の黄色 (`(255,235,0)`)、半透明オーバーレイ用の中間グレー、ボタンホバー色 等。**集約方法**: [GameMain.cpp](Project2/GameMain.cpp) 定義 + [GameMain.h](Project2/GameMain.h) extern の既存パターンを踏襲、または `ReversiPalette` 構造体に集約する案も検討。盤面色 (`GetColor(0, 100, 20)` 等) も extern 化して `BoardColorGame1` / `BoardColorGame2` のように命名統一すべき。実装規模: 小〜中 (色の追加自体は機械的、命名規約と集約方針の整理が主)
+2. **カラーパレット増設 (継続的)** — 1.5.6.1 (2026-06-26) で初期 7 色 (`ColorBronze`/`Silver`/`Gold`/`Platinum`/`Warn`/`Overlay`/`Hover`) を `ColorXxx` 命名で extern 追加済 ([CHANGELOG.md](CHANGELOG.md) [1.5.6.1] 参照)。本リリースでは未参照、B1/B2/テーマ化等の将来機能で使用される伏線。**継続的タスク** として残置: 今後の機能拡張で新色が必要になり次第、同じ `ColorXxx` 命名で [GameMain.cpp](Project2/GameMain.cpp) 定義 + [GameMain.h](Project2/GameMain.h) extern 追加を継続。1 色追加ごとに SUBPATCH バンプ (1.5.6.1 → 1.5.6.2 → ...)、機能と同時追加の場合は機能側 PATCH バンプに巻き込み。**未対応**: 既存インライン `GetColor()` 呼び出し (盤面色 `(0,100,20)` / `(0,140,20)`、メッセージ箱グレー `(150,150,150)`、ヒントオレンジ `(255,165,0)`、MenuScene/Game4Scene の白赤リテラル) の extern 化 — 別タスクで一括対応する場合 `BoardColorDark/Light` `MsgBoxBg` `ColorHintOrange` 等の命名統一を要設計検討
 
 ### 将来予定 (リポジトリ整備)
 
@@ -757,6 +757,20 @@ DxLib パスを `.props` に集約 + x64 ターゲット追加で 4 構成対応
 - **新関数 `rbDrawHints` を [GameSceneMain.cpp](Project2/GameSceneMain.cpp) に追加**: 全マスを `rbPutPiece(..., put_flag=false)` でシミュレーションして置けるマスを判定、`SetDrawBlendMode(DX_BLENDMODE_ALPHA, 128)` (50% 半透明) に切替えてマス中央に `DrawCircle` でオレンジ (`GetColor(255, 165, 0)`、関数冒頭で 1 度キャッシュ) 塗り潰し丸 (半径 = `CELL_PX / 3`) を描画。最後に `SetDrawBlendMode(DX_BLENDMODE_NOBLEND, 0)` で元に戻す (以降の描画に影響しないように必須)。色選定: 既存 `ColorSky` 流用案から再検討し、黒コマ/白コマ/暗緑盤面のいずれとも混同しにくく既存 `← Now` 矢印 (`ColorSky`) と区別される暖色を選択
 - **Game3 renderGame3Scene PLAYING フェーズで条件付き呼び出し**: `status == GAME_STATUS_PLAYING && turn == GAME_TURN_BLACK` 時のみ。TURN_MSG/PASS_MSG/FINISHED 中や CPU 手番中は混乱を招くため非表示
 - **Game1/Game2 では非表示**: ヒント表示は Game3 (あまちゃん) の差別化要素。Game1 (ふつう) / Game2 (まきもどり) は従来通りヒントなしで難易度を維持
+- **検証**: 全 4 構成リビルド (Debug|Win32 / Release|Win32 / Debug|x64 / Release|x64) いずれも警告 0 / エラー 0
+
+### B3 カラーパレット増設 初期 7 色 (完了, 2026-06-26, 1.5.6.1)
+
+§10 将来予定 (プロジェクト全体の拡張) 旧候補 2「カラーパレット増設」の初期分を実装。プランモードでユーザー承認を得てから着手 (待った機能と同じ手順)。**継続的タスク**として位置付け、本リリースは初期 7 色追加のみ。
+
+- **新規 7 色を [GameMain.cpp](Project2/GameMain.cpp) 定義 + [GameMain.h](Project2/GameMain.h) extern 追加** (既存 `ColorWhite`/`Red`/`Sky` パターンに沿う):
+  - **ランク章用** (B2 ランクシステム伏線): `ColorBronze` (205,127,50) / `ColorSilver` (192,192,192) / `ColorGold` (255,215,0) / `ColorPlatinum` (229,228,226)。CSS / Material Design / メダル色配色準拠、プラチナは「白に近い淡銀」で銀と差別化
+  - **汎用 UI 用** (B1 オプショントグル + テーマ化伏線): `ColorWarn` (255,235,0、純黄より少しオレンジ寄りで視認性高) / `ColorOverlay` (128,128,128、半透明オーバーレイ用中間グレー、`DX_BLENDMODE_ALPHA` 128 想定) / `ColorHover` (180,220,255、ColorSky より淡い水色でホバー強調)
+- **本リリースでは未参照** — 新規 7 色はいかなる描画コードからも使われていない。B1/B2/テーマ化等の将来機能で使用される伏線として配置のみ
+- **既存インライン `GetColor()` 呼び出しの extern 化は別タスクに** (スコープ外): 盤面色 (Game1=暗緑 / Game2=明緑) / メッセージ箱グレー / ヒントオレンジ / Menu/Game4 の白赤リテラルは現状維持
+- **新規 4 セグメント版数ルール `MAJOR.MINOR.PATCH.SUBPATCH` を導入**: コードのみ変更で挙動不変な場合 (本リリースのような未使用 extern 追加、内部リファクタ) は PATCH ではなく SUBPATCH を +1。CHANGELOG 冒頭の採番ルールに明記
+- **版数**: 挙動不変だがコード変更なので 1.5.6 → 1.5.6.1 にバンプ ([GameMain.cpp:41](Project2/GameMain.cpp#L41) タイトル + [MenuScene.cpp:66](Project2/MenuScene.cpp#L66) メニュー)
+- **継続性ノート**: §10 で「カラーパレット増設」を完了マークではなく **継続的タスク** として残置。今後の機能拡張で新色が必要になり次第追加し、SUBPATCH または機能側 PATCH に巻き込む方針を §8 / §10 / CHANGELOG に明文化
 - **検証**: 全 4 構成リビルド (Debug|Win32 / Release|Win32 / Debug|x64 / Release|x64) いずれも警告 0 / エラー 0
 
 ### Game3「待った」機能追加 (完了, 2026-06-26, 1.5.6)

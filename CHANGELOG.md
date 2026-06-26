@@ -6,10 +6,36 @@
 
 - **MAJOR** — オリジナル (1.x) は当面据え置き
 - **MINOR** — リファクタリングフェーズ転換ごとに +1 (α=1.2 / β=1.3 / γ=1.4 / δ=1.5 / 以降未定)
-- **PATCH** — 各フェーズ内のサブターゲット完了ごとに +1
+- **PATCH** — 各フェーズ内のサブターゲット完了ごとに +1 (挙動変化を伴う場合)
+- **SUBPATCH (4 セグメント目)** — コードのみの変更で挙動が不変な場合、PATCH を上げず SUBPATCH を +1 する (例: 新規 extern 定数を追加するが本リリースでは未使用、内部リファクタで挙動同一)。CHANGELOG エントリは作成するが視認できる挙動変化はないことを明記。形式は `MAJOR.MINOR.PATCH.SUBPATCH` (例: 1.5.6.1)
 - **据え置き** — ドキュメント / メタファイル (CHANGELOG / README / LICENSE / CLAUDE.md 等) のみの変更ではバージョンを上げない。Keep a Changelog 流の `[Unreleased]` セクションに記録し、次の本体変更リリースに巻き込まれて公開される
 
 詳細な作業ログは [CLAUDE.md §13 過去の整理作業履歴](CLAUDE.md) を参照。
+
+---
+
+## [1.5.6.1] - 2026-06-26
+
+**SUBPATCH リリース** — コードのみの変更で挙動は完全に不変 (新規 extern 色定数の追加のみ、本リリースでは未使用)。
+
+### Added
+
+- **B3: カラーパレット増設 (初期 7 色)** — [GameMain.cpp](Project2/GameMain.cpp) 定義 + [GameMain.h](Project2/GameMain.h) extern を既存パターンに沿って追加
+  - **ランク章用 4 色** (B2 プレイヤーランクシステム伏線): `ColorBronze` (205,127,50) / `ColorSilver` (192,192,192) / `ColorGold` (255,215,0) / `ColorPlatinum` (229,228,226)
+  - **汎用 UI 色 3 色** (B1 オプショントグル + テーマ化伏線): `ColorWarn` (255,235,0、警告系黄色) / `ColorOverlay` (128,128,128、半透明オーバーレイ用中間グレー) / `ColorHover` (180,220,255、ホバー強調)
+  - 既存インライン `GetColor()` 呼び出し (盤面色 / メッセージ箱グレー / ヒントオレンジ / Menu/Game4 の白赤リテラル) の extern 化は本リリースのスコープ外
+  - 新規 7 色は本リリースでは未参照 — B1 / B2 / テーマ化等の将来機能で使用される
+- **4 セグメント版数ルール (SUBPATCH)** を CHANGELOG 冒頭の採番ルールに明文化 — コードのみ変更で挙動不変な場合の新慣例 (例: 本リリース)
+
+### Changed
+
+- ウィンドウタイトル `Reverse Reversi 1.5.6` → `Reverse Reversi 1.5.6.1` ([GameMain.cpp](Project2/GameMain.cpp))
+- メニュー版数表示 `まきもどリバーシ Ver 1.5.6` → `Ver 1.5.6.1` ([MenuScene.cpp](Project2/MenuScene.cpp))
+
+### Notes
+
+- カラーパレット増設は **継続的タスク** として CLAUDE.md §10 に残置。今後の機能拡張 (B1/B2/テーマ化/Easter Egg 等) で新色が必要になり次第、同じ `ColorXxx` 命名で追加し SUBPATCH バンプ (1.5.6.2、1.5.6.3、...) または機能側 PATCH バンプに巻き込む方針
+- バイナリサイズ +28 byte 程度 (7 個の `unsigned int` グローバル、4 byte × 7)、パフォーマンス影響ゼロ
 
 ---
 
@@ -358,6 +384,7 @@
 
 ---
 
+[1.5.6.1]: https://github.com/OutRose/ReversedReversi/releases/tag/v1.5.6.1
 [1.5.6]: https://github.com/OutRose/ReversedReversi/releases/tag/v1.5.6
 [1.5.5]: https://github.com/OutRose/ReversedReversi/releases/tag/v1.5.5
 [1.5.4]: https://github.com/OutRose/ReversedReversi/releases/tag/v1.5.4

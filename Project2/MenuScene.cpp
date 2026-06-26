@@ -63,7 +63,7 @@ void moveMenuScene()
 void renderMenuScene(void)
 {
 	ChangeFont("ＭＳ 明朝");
-	DrawString(120, 50, "まきもどリバーシ Ver 1.5.6", GetColor(255, 255, 255));
+	DrawString(120, 50, "まきもどリバーシ Ver 1.5.6.1", GetColor(255, 255, 255));
 	DrawString(160, 480, "Made with DX-Library 3.24f\n\nBGM: hitoshi & ambnience\nby Senses Circuit\nhttps://www.senses-circuit.com/",
 		GetColor(255, 255, 255));
 

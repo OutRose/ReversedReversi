@@ -25,6 +25,12 @@
 //色変数 (定義は GameMain.cpp、全シーン共通)
 extern unsigned int ColorWhite, ColorRed, ColorSky;
 
+//ランク章用 (1.5.6.1 で追加、B2 ランクシステム伏線)
+extern unsigned int ColorBronze, ColorSilver, ColorGold, ColorPlatinum;
+
+//汎用 UI 用 (1.5.6.1 で追加、B1 オプショントグル + テーマ化伏線)
+extern unsigned int ColorWarn, ColorOverlay, ColorHover;
+
 //画面設定 (WinMain で SetGraphMode に渡す)
 #define SCREEN_WIDTH  800
 #define SCREEN_HEIGHT 700

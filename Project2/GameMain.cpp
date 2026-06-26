@@ -21,6 +21,18 @@ unsigned int ColorWhite = GetColor(255, 255, 255);
 unsigned int ColorRed   = GetColor(255, 0, 0);
 unsigned int ColorSky   = GetColor(40, 235, 255);
 
+//ランク章用 4 色 (1.5.6.1 で追加、B2 プレイヤーランクシステム伏線、CSS/Material/メダル色配色に準拠)
+//Bronze=銅、Silver=銀、Gold=金、Platinum=白に近い淡銀 (銀と差別化)
+unsigned int ColorBronze    = GetColor(205, 127, 50);
+unsigned int ColorSilver    = GetColor(192, 192, 192);
+unsigned int ColorGold      = GetColor(255, 215, 0);
+unsigned int ColorPlatinum  = GetColor(229, 228, 226);
+
+//汎用 UI 色 (1.5.6.1 で追加、B1 オプショントグル + テーマ化伏線)
+unsigned int ColorWarn      = GetColor(255, 235, 0);    //警告系黄色 (純黄より少しオレンジ寄りで視認性高)
+unsigned int ColorOverlay   = GetColor(128, 128, 128);  //半透明オーバーレイ用中間グレー (DX_BLENDMODE_ALPHA 128 想定)
+unsigned int ColorHover     = GetColor(180, 220, 255);  //ホバー強調 (ColorSky より淡い水色、選択中赤と区別)
+
 //WinMain関数
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_  LPSTR lpCmdLine, _In_ int nCmdShow)
 {
@@ -38,7 +50,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 	SetGraphMode(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_BPP);
 
 	//ウィンドウタイトル
-	SetMainWindowText("Reverse Reversi 1.5.6");
+	SetMainWindowText("Reverse Reversi 1.5.6.1");
 
 	//背景色の設定
 	SetBackgroundColor(0, 0, 0);
