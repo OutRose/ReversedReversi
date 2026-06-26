@@ -169,8 +169,8 @@ int rbPutPiece(ReversiBoard* state, int x, int y, int turn, bool put_flag) {
 
 	//置いた場所から上下左右、斜めの 8 方向に盤面をチェック (dx, dy で方向を示す)
 	for (int dy = -1; dy <= 1; dy++) for (int dx = -1; dx <= 1; dx++) {
-		//裏返すことができる敵コマの位置を一時格納しておく配列
-		int wx[BOARD_SIZE], wy[BOARD_SIZE];
+		//裏返すことができる敵コマの位置を一時格納しておく配列 (lnt-uninitialized-local 抑制で zero-init)
+		int wx[BOARD_SIZE] = {}, wy[BOARD_SIZE] = {};
 
 		for (int wn = 0;; wn++) {
 			//kx, ky でチェックする場所を示す
@@ -255,8 +255,8 @@ bool rbThinkCpu(ReversiBoard* state, int turn) {
 //rbThinkCpu (貪欲: 最多取得) より明確に弱く、初心者でも勝てる難易度を提供する
 //rbIsPass が事前に呼ばれて false (置ける場所あり) を確認している前提だが、念のため候補 0 件のガードあり
 bool rbThinkRandom(ReversiBoard* state, int turn) {
-	int candX[BOARD_SIZE * BOARD_SIZE];	//置ける候補の x 座標
-	int candY[BOARD_SIZE * BOARD_SIZE];	//置ける候補の y 座標
+	int candX[BOARD_SIZE * BOARD_SIZE] = {};	//置ける候補の x 座標 (lnt-uninitialized-local 抑制で zero-init)
+	int candY[BOARD_SIZE * BOARD_SIZE] = {};	//置ける候補の y 座標 (lnt-uninitialized-local 抑制で zero-init)
 	int candCount = 0;
 
 	//置ける場所を全マス走査して候補リストに集める
