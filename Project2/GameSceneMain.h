@@ -69,6 +69,9 @@ bool rbThinkPlayer(ReversiBoard* state, int turn);
 //CPU 思考 (最多取得マス選択、戻り値: 常に true)
 bool rbThinkCpu(ReversiBoard* state, int turn);
 
+//CPU 思考 弱 (置ける場所からランダム選択、Game3 あまちゃん次元用、戻り値: 置けたら true)
+bool rbThinkRandom(ReversiBoard* state, int turn);
+
 //メッセージセット (turn: 1=BLACK 2=WHITE 3=DRAW、type: 0=TURN 1=PASS 2=WINS!)
 void rbSetMsg(ReversiBoard* state, int turn, int type);
 

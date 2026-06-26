@@ -1,0 +1,31 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Common.props — DxLib パス + 共通インクルード/ライブラリディレクトリ設定
+  δ-3 (2026-06-26) で 4 構成 (Debug/Release × Win32/x64) のパス重複を集約。
+  vcxproj から ImportGroup 経由でインポートされる。
+
+  DxLib のヘッダ (DxDataTypeWin.h) が _MSC_VER / _WIN64 / _MT|_MD を自動判定して
+  適切な lib (DxLib_vs2015_x86_MT.lib / DxLib_vs2015_x64_MT.lib 等) を
+  #pragma comment(lib, ...) でリンクするので、ここでは AdditionalLibraryDirectories
+  のディレクトリ指定だけで Win32/x64 両方が正しく解決される。
+
+  カスタマイズが必要な場合: <DxLibDir> をローカル環境に合わせて書き換えるだけ。
+-->
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Label="UserMacros">
+    <DxLibDir>C:\DxLib</DxLibDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(DxLibDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <AdditionalLibraryDirectories>$(DxLibDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <BuildMacro Include="DxLibDir">
+      <Value>$(DxLibDir)</Value>
+    </BuildMacro>
+  </ItemGroup>
+</Project>

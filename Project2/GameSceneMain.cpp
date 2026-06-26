@@ -216,8 +216,17 @@ bool rbThinkPlayer(ReversiBoard* state, int turn) {
 			mouse_flag = true;	//フラグを立てる (押下中)
 			int mx, my;
 			GetMousePoint(&mx, &my);	//マウスポインタの場所を取得
+
+			//δ-2: 盤面範囲外クリックでの配列アクセス UB を防止
+			//負値ガード: C++ の整数除算はゼロ向き切り捨てなので mx=-10 → bx=0 になり単純な上限チェックでは捕捉不能
+			if (mx < 0 || my < 0) return false;
+			int bx = mx / CELL_PX;
+			int by = my / CELL_PX;
+			//上限ガード: 右パネル領域 (x>=576) や下部メッセージ領域 (y>=576) クリックを除外
+			if (bx >= BOARD_SIZE || by >= BOARD_SIZE) return false;
+
 			//ポインタのある場所のマスに置く (置けたら true 返し、ターン進行)
-			if (rbPutPiece(state, mx / CELL_PX, my / CELL_PX, turn, true)) return true;
+			if (rbPutPiece(state, bx, by, turn, true)) return true;
 		}
 	} else {
 		mouse_flag = false;	//ボタンが離されたらフラグを下ろす
@@ -239,6 +248,31 @@ bool rbThinkCpu(ReversiBoard* state, int turn) {
 		}
 	}
 	rbPutPiece(state, wx, wy, turn, true);	//確定したマスに置く
+	return true;
+}
+
+//CPU 思考 弱 (置ける場所からランダム選択、Game3 あまちゃん用、戻り値: 置けたら true)
+//rbThinkCpu (貪欲: 最多取得) より明確に弱く、初心者でも勝てる難易度を提供する
+//rbIsPass が事前に呼ばれて false (置ける場所あり) を確認している前提だが、念のため候補 0 件のガードあり
+bool rbThinkRandom(ReversiBoard* state, int turn) {
+	int candX[BOARD_SIZE * BOARD_SIZE];	//置ける候補の x 座標
+	int candY[BOARD_SIZE * BOARD_SIZE];	//置ける候補の y 座標
+	int candCount = 0;
+
+	//置ける場所を全マス走査して候補リストに集める
+	for (int y = 0; y < BOARD_SIZE; y++) for (int x = 0; x < BOARD_SIZE; x++) {
+		if (rbPutPiece(state, x, y, turn, false)) {
+			candX[candCount] = x;
+			candY[candCount] = y;
+			candCount++;
+		}
+	}
+
+	if (candCount == 0) return false;	//置ける場所なし (rbIsPass 側で検出されるが念のため)
+
+	//候補からランダム選択 (GetRand(n) は 0〜n を返すので n-1 を渡す)
+	int idx = GetRand(candCount - 1);
+	rbPutPiece(state, candX[idx], candY[idx], turn, true);
 	return true;
 }
 
@@ -334,7 +368,8 @@ void rbDrawPieces(ReversiBoard* state, int pieces[2]) {
 //status > 1 (TURN_MSG/PASS_MSG/FINISHED) の時に灰色箱の中に state->msg を表示
 void rbDrawMsg(ReversiBoard* state, int status) {
 	if (status <= GAME_STATUS_PLAYING) return;
-	int mw = GetDrawStringWidth(state->msg.c_str(), state->msg.size());
+	//δ-3: x64 ビルド時の C4267 (size_t→int 暗黙縮小) を回避。メッセージは数文字なので int で十分
+	int mw = GetDrawStringWidth(state->msg.c_str(), (int)state->msg.size());
 	DrawBox(MSG_BOX_CENTER_X - mw / 2 - MSG_BOX_PADDING_X, MSG_BOX_Y_TOP,
 	        MSG_BOX_CENTER_X + mw / 2 + MSG_BOX_PADDING_X, MSG_BOX_Y_BOTTOM, GetColor(150, 150, 150), TRUE);
 	DrawString(MSG_BOX_CENTER_X - mw / 2, MSG_TEXT_Y, state->msg.c_str(), ColorWhite);
