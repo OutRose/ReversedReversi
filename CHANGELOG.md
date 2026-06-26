@@ -7,8 +7,21 @@
 - **MAJOR** — オリジナル (1.x) は当面据え置き
 - **MINOR** — リファクタリングフェーズ転換ごとに +1 (α=1.2 / β=1.3 / γ=1.4 / δ=1.5 / 以降未定)
 - **PATCH** — 各フェーズ内のサブターゲット完了ごとに +1
+- **据え置き** — ドキュメント / メタファイル (CHANGELOG / README / LICENSE / CLAUDE.md 等) のみの変更ではバージョンを上げない。Keep a Changelog 流の `[Unreleased]` セクションに記録し、次の本体変更リリースに巻き込まれて公開される
 
 詳細な作業ログは [CLAUDE.md §13 過去の整理作業履歴](CLAUDE.md) を参照。
+
+---
+
+## [Unreleased]
+
+プログラム本体未変更のドキュメント追加。次回の本体変更リリース時に取り込まれる。
+
+### Added
+
+- [LICENSE.md](LICENSE.md) を新規作成 — **MIT License** 本文、Copyright (c) 2026 OutRose。末尾に「第三者ライブラリのライセンス」セクションで [DXライブラリ](https://dxlib.xsrv.jp/) (作者: 山田 巧 氏) のライセンス遵守注記を併記
+- [README.md](README.md) を新規作成 (GitHub 公開向け) — **日本語上 / 英語下** のバイリンガル構成。タイトル / 特徴 / 3 モード説明 / ビルド要件 / ビルド手順 / 操作方法 / ライセンス / ドキュメント / クレジットの 8 セクション
+- README から [LICENSE.md](LICENSE.md) / [CHANGELOG.md](CHANGELOG.md) / [CLAUDE.md](CLAUDE.md) / [Project2/Common.props](Project2/Common.props) への相互リンク
 
 ---
 
@@ -334,6 +347,7 @@
 
 ---
 
+[Unreleased]: https://github.com/OutRose/ReversedReversi/compare/v1.5.5...HEAD
 [1.5.5]: https://github.com/OutRose/ReversedReversi/releases/tag/v1.5.5
 [1.5.4]: https://github.com/OutRose/ReversedReversi/releases/tag/v1.5.4
 [1.5.3]: https://github.com/OutRose/ReversedReversi/releases/tag/v1.5.3

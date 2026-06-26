@@ -1,6 +1,6 @@
 ﻿# CLAUDE.md — ReversedReversi プロジェクト情報
 
-Visual Studio (MSVC) + DxLib による C++ リバーシゲーム。本体は [Project2.sln](Project2.sln) / [Project2/](Project2/) 配下。タイトルバー表記は「Reverse Reversi 1.5.5」、メニュー描画は「まきもどリバーシ Ver 1.5.5」([Project2/MenuScene.cpp:66](Project2/MenuScene.cpp#L66))。日本語 Windows 環境 (コードページ 932) でビルドする前提。バージョン履歴は [CHANGELOG.md](CHANGELOG.md) を参照 (採番ルール: フェーズ MINOR + サブターゲット PATCH)。
+Visual Studio (MSVC) + DxLib による C++ リバーシゲーム。本体は [Project2.sln](Project2.sln) / [Project2/](Project2/) 配下。タイトルバー表記は「Reverse Reversi 1.5.5」、メニュー描画は「まきもどリバーシ Ver 1.5.5」([Project2/MenuScene.cpp:66](Project2/MenuScene.cpp#L66))。日本語 Windows 環境 (コードページ 932) でビルドする前提。バージョン履歴は [CHANGELOG.md](CHANGELOG.md)、ライセンスは [LICENSE.md](LICENSE.md) (MIT)、公開向け案内は [README.md](README.md) を参照 (採番ルール: フェーズ MINOR + サブターゲット PATCH、ただし**ドキュメント/メタファイル変更のみではバージョン据え置き** — CHANGELOG 冒頭参照)。
 
 姉妹プロジェクトに [TwistTimeStopper](d:\Repositories\TwistTimeStopper) があり、シーン管理の雛形を共有している (元は同じ「Scene管理付き空プロジェクトRev2」テンプレート)。TwistTimeStopper は既に α/β/γ/δ のリファクタを完走しており、共通基盤化のリファレンスとして本ファイル中で頻繁に参照する。
 
@@ -427,12 +427,13 @@ Game3 専用ではなく、ふつう/まきもどり/あまちゃんを横断す
 
 ### 将来予定 (リポジトリ整備)
 
-ゲーム機能とは別系統のリポジトリ/ドキュメント整備タスク。GitHub 公開向けのメタ情報整備:
+ゲーム機能とは別系統のリポジトリ/ドキュメント整備タスクは **全完了** (ドキュメント変更のためバージョン未消費、CHANGELOG `[Unreleased]` セクションに記録):
 
-1. **README.md (GitHub 公開用)** — リポジトリルートに新規作成。タイトル「まきもどリバーシ (Reverse Reversi)」、スクリーンショット、3 モード説明 (ふつう/まきもどり/あまちゃん)、ビルド要件 (Visual Studio + DxLib + v145)、操作説明 (パッド/キー/マウス)、ライセンスへのリンク。日本語メインで、英語サマリを冒頭に併記する案も検討。実装規模: 中 (スクリーンショット用意 + 文章作成)
-2. **LICENSE.md (MIT)** — リポジトリルートに MIT License テキストを配置。著作権者表記は `Copyright (c) 2026 OutRose` (git config の user.name に合わせる)。実装規模: 極小 (テンプレート流用、年/氏名差し替え)。**注意**: DxLib 自体のライセンス (DXライブラリ ライセンス) は別途遵守が必要 — DxLib ライセンス表記の同梱を README に明記。実装規模: 小
+- **CHANGELOG.md** 分割 → 1.5.5 で完了 ([CHANGELOG.md](CHANGELOG.md))
+- **LICENSE.md** (MIT) → 完了 ([LICENSE.md](LICENSE.md))、第三者ライブラリ (DxLib) ライセンス遵守注記を末尾セクションに併記
+- **README.md** (GitHub 公開用、JA 上 / EN 下) → 完了 ([README.md](README.md))、テキストのみ (スクリーンショットは将来追加余地)
 
-(CHANGELOG.md 分割は 1.5.5 で完了 — [CHANGELOG.md](CHANGELOG.md) 参照)
+追加候補 (任意): 将来 README にスクリーンショットを追加する場合は `docs/screenshots/` ディレクトリを設置、メニュー画面 + Game3 ヒント表示画面の 2 枚程度が想定。
 
 ### 空シーン雛形
 
