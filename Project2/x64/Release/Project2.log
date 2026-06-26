@@ -1,13 +1,1 @@
-﻿  Game1Scene.cpp
-  Game2Scene.cpp
-  Game3Scene.cpp
-  Game4Scene.cpp
-  GameMain.cpp
-  GameSceneMain.cpp
-  MenuScene.cpp
-  コード生成しています。
-  1 of 175 functions ( 0.6%) were compiled, the rest were copied from previous compilation.
-    0 functions were new in current compilation
-    0 functions had inline decision re-evaluated but remain unchanged
-  コード生成が終了しました。
-  Project2.vcxproj -> D:\Repositories\ReversedReversi\x64\Release\Project2.exe
+﻿
