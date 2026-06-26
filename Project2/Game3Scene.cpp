@@ -152,6 +152,14 @@ void renderGame3Scene(void)
 		rbDrawBoard(GetColor(0, 100, 20));
 		rbDrawGrid();
 		rbDrawPieces(&state, pieces);
+
+		//Game3 専用: プレイヤー手番中のみヒント表示 (置けるマスを半透明丸でハイライト、あまちゃん向け)
+		//PLAYING 中以外 (TURN_MSG/PASS_MSG/FINISHED) は混乱を招くため非表示、CPU 手番も同様
+		if (status == GAME_STATUS_PLAYING && turn == GAME_TURN_BLACK)
+		{
+			rbDrawHints(&state, turn);
+		}
+
 		rbDrawMsg(&state, status);
 		rbDrawCountPanel(&state);
 		rbDrawTurnIndicator(turn);

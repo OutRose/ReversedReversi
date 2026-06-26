@@ -240,7 +240,7 @@ Game1〜4Scene は **`GAMESCENE<N>_H_`** (数字は GAMESCENE の後)。`GAME<N>
 
 - シーン関数: `initXXXScene` / `moveXXXScene` / `renderXXXScene` / `releaseXXXScene` / `XXXSceneCollideCallback` ([4. シーンアーキテクチャ](#4-シーンアーキテクチャ) 参照)
 - 共通ロジック関数 (盤面ステート操作、β-D-5 で導入): `rb*` プレフィックス (`rbInit`, `rbPutPiece`, `rbIsPass`, `rbThinkPlayer`, `rbThinkCpu`, `rbSetMsg`, `rbCheckResult`, `rbCountPieces`, `rbRemovePieces`)。第 1 引数は `ReversiBoard*` ([GameSceneMain.h](Project2/GameSceneMain.h) 定義)
-- 共通描画関数 (δ-4 で導入): `rbDraw*` プレフィックス (`rbDrawBoard`, `rbDrawGrid`, `rbDrawPieces`, `rbDrawMsg`, `rbDrawCountPanel`, `rbDrawTurnIndicator`)。Game1Scene/Game2Scene の `renderXxxScene` から呼び出す共通描画ヘルパで、盤面色は引数化
+- 共通描画関数 (δ-4 で導入): `rbDraw*` プレフィックス (`rbDrawBoard`, `rbDrawGrid`, `rbDrawPieces`, `rbDrawMsg`, `rbDrawCountPanel`, `rbDrawTurnIndicator`)。Game1Scene/Game2Scene の `renderXxxScene` から呼び出す共通描画ヘルパで、盤面色は引数化。Game3 あまちゃん専用ヒント表示 `rbDrawHints` も同グループ (置けるマスをオレンジ半透明丸でハイライト、後続セッションで追加)
 - シーン専用補助関数: ローワーキャメル (例: Game2 `changeBGM`)
 - β-D-5 で `*2` / `*02` サフィックスは全廃 (旧 `putPiece2`/`think01`/`think02`/`setMsg2`/`checkResult2`/`removePiece` は `rb*` に統合済)
 
@@ -404,7 +404,7 @@ default: break;  // ← 追加
 
 - **`SCENE_GAME1` (ふつうの次元)** — 12×12 リバーシ本体、プレイヤー (黒、`rbThinkPlayer`) vs CPU (白、`rbThinkCpu`)、勝敗判定まで実装。γ-1 (2026-06-25) でフレーム駆動化 + シーン再入場リセット + X キーメニュー復帰実装済
 - **`SCENE_GAME2` (まきもどり次元、旧 SCENE_GAME4)** — Game1 の拡張版、2 ラウンド制 (`CurrentRound`)、ラウンド間で `rbRemovePieces(&state, 96)` で 96 マス削除、BGM 切替 (`changeBGM`)。γ-1 でフレーム駆動化 + ラウンド遷移 240 フレームカウンタ化 + 終了メッセージフリッカー解消 + ラウンド 2 終了時の X キーメニュー復帰 + `releaseGame2Scene` の `DxLib_End` 直呼び撤去 (γ-2 副次解消) 完了
-- **`SCENE_GAME3` (あまちゃん次元、旧 SCENE_GAME5)** — γ-3 (2026-06-26) で独自モード化完了。内部 2 フェーズ構造 (`GAME3_PHASE_NAME_ENTRY` → `GAME3_PHASE_PLAYING`)。名前入力は `KeyInputSingleCharString` + Enter キー検出で確定 (元の 1 文字入力即遷移バグ解消)。対局は Game1 と同じ盤面ロジック + 思考テーブル `{ rbThinkPlayer, rbThinkRandom }` で**弱い CPU** (置ける場所からランダム選択) を採用、初心者でも勝てる難易度。対局画面の右パネルに `PLAYER:` として `nameTmp` を表示
+- **`SCENE_GAME3` (あまちゃん次元、旧 SCENE_GAME5)** — γ-3 (2026-06-26) で独自モード化完了。内部 2 フェーズ構造 (`GAME3_PHASE_NAME_ENTRY` → `GAME3_PHASE_PLAYING`)。名前入力は `KeyInputSingleCharString` + Enter キー検出で確定 (元の 1 文字入力即遷移バグ解消)。対局は Game1 と同じ盤面ロジック + 思考テーブル `{ rbThinkPlayer, rbThinkRandom }` で**弱い CPU** (置ける場所からランダム選択) を採用、初心者でも勝てる難易度。対局画面の右パネルに `PLAYER:` として `nameTmp` を表示。後続セッション (2026-06-26) で **ヒント表示** (`rbDrawHints`、置けるマスにオレンジ半透明丸、プレイヤー手番中のみ) を追加
 
 ### 未完成 (要対応)
 
@@ -412,11 +412,11 @@ default: break;  // ← 追加
 
 ### 将来実装予定 (Game3 あまちゃん次元の拡張)
 
-ユーザー判断により γ-3 でのスコープは「弱い CPU のみ」に絞ったが、以下を順次追加予定:
+γ-3 + 後続 (2026-06-26) で「弱い CPU + ヒント表示」を実装済。以下は未着手の追加候補:
 
-1. **ヒント表示** (`rbDrawHints`) — プレイヤー手番中、置ける場所を半透明丸で表示。初心者がどこに置けるか視覚的に分かる。実装規模: 小〜中 ([GameSceneMain.cpp](Project2/GameSceneMain.cpp) に追加、Game3 の `renderGame3Scene` から呼び出し)
-2. **「待った」機能** — 盤面履歴 1 手分を保持、R キーで 1 手戻せる。コマを取られたときのストレス軽減。実装規模: 中〜大 (`ReversiBoard` の前フレーム状態を `ReversiBoard prevState` として Game3Scene 内 static 保持、R キー押下時に `state = prevState` で復元)
-3. (任意) **盤面サイズ縮小モード** — 12×12 → 8×8 など。簡単な対局向け。実装規模: 大 (盤面サイズを定数固定から動的化、`rbInit` 拡張)
+1. **ヒントマスへの取得コマ数表示** — 現状の `rbDrawHints` はオレンジ丸を描画するだけだが、丸の中心または隣接位置に「そのマスに置いた場合に裏返るコマ数」を数字で重ねる。`rbPutPiece(state, x, y, turn, false)` の戻り値 (既に算出済、ヒント判定で使用中の値) を再利用するだけ。実装規模: 小 — `rbDrawHints` 内で `int gain = rbPutPiece(...)` の戻り値を受けて `if (gain) { DrawCircle(...); DrawFormatString(cx - N, cy - M, color, "%d", gain); }` に拡張。フォントサイズはマス (48px) に収まるよう要調整、文字色は丸の上で視認できる対比色 (黒 or 白)
+2. **「待った」機能** — 盤面履歴 1 手分を保持、R キーで 1 手戻せる。コマを取られたときのストレス軽減。実装規模: 中〜大 (`ReversiBoard` の前フレーム状態を `ReversiBoard prevState` として Game3Scene 内 static 保持、R キー押下時に `state = prevState` で復元 + turn/status も同時に巻き戻し)
+3. (任意) **盤面サイズ縮小モード** — 12×12 → 8×8 など。簡単な対局向け。実装規模: 大 (盤面サイズを定数固定から動的化、`rbInit` 拡張、`rbDraw*` 関数群のパラメータ化が必要)
 
 ### 空シーン雛形
 
@@ -733,5 +733,14 @@ DxLib パスを `.props` に集約 + x64 ターゲット追加で 4 構成対応
 - **C4267 警告解消** ([GameSceneMain.cpp `rbDrawMsg`](Project2/GameSceneMain.cpp)): x64 では `std::string::size()` の戻り型 `size_t` が 64-bit、`GetDrawStringWidth` 第 2 引数は `int` のため C4267 (`size_t→int` 暗黙縮小) が発生。メッセージは数文字なので `(int)state->msg.size()` 明示キャストで安全に解消
 - **DxLib リンクは自動**: [DxDataTypeWin.h](file:///C:/DxLib/DxDataTypeWin.h) が `_MSC_VER >= 1900` + `_WIN64` + `_MT` を判定して `#pragma comment(lib, "DxLib_vs2015_x64_MT.lib")` 等を発行するため、`Common.props` の `AdditionalLibraryDirectories` 指定だけで Win32/x64 両方が解決される
 - **検証**: 全 4 構成リビルド (Debug|Win32 / Release|Win32 / Debug|x64 / Release|x64) いずれも警告 0 / エラー 0。出力サイズ: Debug|Win32 約 11.7 MB / Release|Win32 約 6.1 MB / Debug|x64 約 13.6 MB / Release|x64 約 6.9 MB
+
+### Game3 ヒント表示追加 (完了, 2026-06-26)
+
+§10 将来予定の「ヒント表示」を実装。Game3 (あまちゃん) 専用の初心者向けヒント機能。
+
+- **新関数 `rbDrawHints` を [GameSceneMain.cpp](Project2/GameSceneMain.cpp) に追加**: 全マスを `rbPutPiece(..., put_flag=false)` でシミュレーションして置けるマスを判定、`SetDrawBlendMode(DX_BLENDMODE_ALPHA, 128)` (50% 半透明) に切替えてマス中央に `DrawCircle` でオレンジ (`GetColor(255, 165, 0)`、関数冒頭で 1 度キャッシュ) 塗り潰し丸 (半径 = `CELL_PX / 3`) を描画。最後に `SetDrawBlendMode(DX_BLENDMODE_NOBLEND, 0)` で元に戻す (以降の描画に影響しないように必須)。色選定: 既存 `ColorSky` 流用案から再検討し、黒コマ/白コマ/暗緑盤面のいずれとも混同しにくく既存 `← Now` 矢印 (`ColorSky`) と区別される暖色を選択
+- **Game3 renderGame3Scene PLAYING フェーズで条件付き呼び出し**: `status == GAME_STATUS_PLAYING && turn == GAME_TURN_BLACK` 時のみ。TURN_MSG/PASS_MSG/FINISHED 中や CPU 手番中は混乱を招くため非表示
+- **Game1/Game2 では非表示**: ヒント表示は Game3 (あまちゃん) の差別化要素。Game1 (ふつう) / Game2 (まきもどり) は従来通りヒントなしで難易度を維持
+- **検証**: 全 4 構成リビルド (Debug|Win32 / Release|Win32 / Debug|x64 / Release|x64) いずれも警告 0 / エラー 0
 
 ---

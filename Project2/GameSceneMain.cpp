@@ -406,3 +406,27 @@ void rbDrawTurnIndicator(int turn) {
 		DrawString(PANEL_TURN_X, PANEL_TURN_WHITE_Y, "← Now", ColorSky);
 	}
 }
+
+//置ける場所を半透明丸でハイライト (Game3 あまちゃん用、初心者向けヒント表示)
+//全マス走査で rbPutPiece の put_flag=false シミュレーションを使って置けるマスを判定。
+//SetDrawBlendMode で 50% アルファに切替えてマス中央にオレンジ丸を描画、最後にブレンドモードを元に戻す。
+//色 (255, 165, 0) はオレンジ。黒コマ/白コマ/暗緑盤面のいずれとも混同しにくく、ヒントらしい暖色
+void rbDrawHints(ReversiBoard* state, int turn) {
+	//ヒント色 (関数冒頭で 1 度だけ計算、144 マス走査での GetColor 呼び出しを回避)
+	int hintColor = GetColor(255, 165, 0);
+
+	//半透明描画モードに切替 (255 段階で 128 = 50%)
+	SetDrawBlendMode(DX_BLENDMODE_ALPHA, 128);
+
+	for (int y = 0; y < BOARD_SIZE; y++) for (int x = 0; x < BOARD_SIZE; x++) {
+		if (rbPutPiece(state, x, y, turn, false)) {
+			//マス中央に塗り潰し丸を描画 (半径はマスの 1/3、視認性と被らなさのバランス)
+			int cx = x * CELL_PX + BOARD_ORIGIN_X + CELL_PX / 2;
+			int cy = y * CELL_PX + BOARD_ORIGIN_Y + CELL_PX / 2;
+			DrawCircle(cx, cy, CELL_PX / 3, hintColor, TRUE);
+		}
+	}
+
+	//ブレンドモードを元に戻す (以降の描画に影響しないように必須)
+	SetDrawBlendMode(DX_BLENDMODE_NOBLEND, 0);
+}

@@ -106,6 +106,10 @@ void rbDrawCountPanel(ReversiBoard* state);
 //誰のターンかを示す "← Now" インジケータを描画
 void rbDrawTurnIndicator(int turn);
 
+//置ける場所を半透明丸でハイライト (Game3 あまちゃん用、初心者向けヒント表示)
+//プレイヤー手番中のみ呼び出す想定 (CPU 手番中は混乱を招くため非表示推奨)
+void rbDrawHints(ReversiBoard* state, int turn);
+
 //シーンを変更する関数
 void changeScene(SCENE_NO no);
 
