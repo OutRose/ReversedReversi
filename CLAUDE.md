@@ -1,6 +1,6 @@
 ﻿# CLAUDE.md — ReversedReversi プロジェクト情報
 
-Visual Studio (MSVC) + DxLib による C++ リバーシゲーム。本体は [Project2.sln](Project2.sln) / [Project2/](Project2/) 配下。タイトルバー表記は「Reverse Reversi 1.5.5」、メニュー描画は「まきもどリバーシ Ver 1.5.5」([Project2/MenuScene.cpp:66](Project2/MenuScene.cpp#L66))。日本語 Windows 環境 (コードページ 932) でビルドする前提。バージョン履歴は [CHANGELOG.md](CHANGELOG.md)、ライセンスは [LICENSE.md](LICENSE.md) (MIT)、公開向け案内は [README.md](README.md) を参照 (採番ルール: フェーズ MINOR + サブターゲット PATCH、ただし**ドキュメント/メタファイル変更のみではバージョン据え置き** — CHANGELOG 冒頭参照)。
+Visual Studio (MSVC) + DxLib による C++ リバーシゲーム。本体は [Project2.sln](Project2.sln) / [Project2/](Project2/) 配下。タイトルバー表記は「Reverse Reversi 1.5.6」、メニュー描画は「まきもどリバーシ Ver 1.5.6」([Project2/MenuScene.cpp:66](Project2/MenuScene.cpp#L66))。日本語 Windows 環境 (コードページ 932) でビルドする前提。バージョン履歴は [CHANGELOG.md](CHANGELOG.md)、ライセンスは [LICENSE.md](LICENSE.md) (MIT)、公開向け案内は [README.md](README.md) を参照 (採番ルール: フェーズ MINOR + サブターゲット PATCH、ただし**ドキュメント/メタファイル変更のみではバージョン据え置き** — CHANGELOG 冒頭参照)。
 
 姉妹プロジェクトに [TwistTimeStopper](d:\Repositories\TwistTimeStopper) があり、シーン管理の雛形を共有している (元は同じ「Scene管理付き空プロジェクトRev2」テンプレート)。TwistTimeStopper は既に α/β/γ/δ のリファクタを完走しており、共通基盤化のリファレンスとして本ファイル中で頻繁に参照する。
 
@@ -404,7 +404,7 @@ default: break;  // ← 追加
 
 - **`SCENE_GAME1` (ふつうの次元)** — 12×12 リバーシ本体、プレイヤー (黒、`rbThinkPlayer`) vs CPU (白、`rbThinkCpu`)、勝敗判定まで実装。γ-1 (2026-06-25) でフレーム駆動化 + シーン再入場リセット + X キーメニュー復帰実装済
 - **`SCENE_GAME2` (まきもどり次元、旧 SCENE_GAME4)** — Game1 の拡張版、2 ラウンド制 (`CurrentRound`)、ラウンド間で `rbRemovePieces(&state, 96)` で 96 マス削除、BGM 切替 (`changeBGM`)。γ-1 でフレーム駆動化 + ラウンド遷移 240 フレームカウンタ化 + 終了メッセージフリッカー解消 + ラウンド 2 終了時の X キーメニュー復帰 + `releaseGame2Scene` の `DxLib_End` 直呼び撤去 (γ-2 副次解消) 完了
-- **`SCENE_GAME3` (あまちゃん次元、旧 SCENE_GAME5)** — γ-3 (2026-06-26) で独自モード化完了。内部 2 フェーズ構造 (`GAME3_PHASE_NAME_ENTRY` → `GAME3_PHASE_PLAYING`)。名前入力は `KeyInputSingleCharString` + Enter キー検出で確定 (元の 1 文字入力即遷移バグ解消)。対局は Game1 と同じ盤面ロジック + 思考テーブル `{ rbThinkPlayer, rbThinkRandom }` で**弱い CPU** (置ける場所からランダム選択) を採用、初心者でも勝てる難易度。対局画面の右パネルに `PLAYER:` として `nameTmp` を表示。後続セッション (2026-06-26) で **ヒント表示** (`rbDrawHints`、置けるマスにオレンジ半透明丸、プレイヤー手番中のみ) + さらに後続 (2026-06-26) で **ヒントマスへの取得コマ数表示** (オレンジ円の中心に白で裏返り枚数を中央寄せ表示、`HINT_GAIN_FONT_SIZE=20`) を追加
+- **`SCENE_GAME3` (あまちゃん次元、旧 SCENE_GAME5)** — γ-3 (2026-06-26) で独自モード化完了。内部 2 フェーズ構造 (`GAME3_PHASE_NAME_ENTRY` → `GAME3_PHASE_PLAYING`)。名前入力は `KeyInputSingleCharString` + Enter キー検出で確定 (元の 1 文字入力即遷移バグ解消)。対局は Game1 と同じ盤面ロジック + 思考テーブル `{ rbThinkPlayer, rbThinkRandom }` で**弱い CPU** (置ける場所からランダム選択) を採用、初心者でも勝てる難易度。対局画面の右パネルに `PLAYER:` として `nameTmp` を表示。後続セッション (2026-06-26) で **ヒント表示** (`rbDrawHints`、置けるマスにオレンジ半透明丸、プレイヤー手番中のみ) + さらに後続 (2026-06-26) で **ヒントマスへの取得コマ数表示** (オレンジ円の中心に白で裏返り枚数を中央寄せ表示、`HINT_GAIN_FONT_SIZE=20`) を追加。1.5.6 (2026-06-26) で **「待った」機能** (R キー、`prevState`/`prevStatus`/`prevTurn`/`undoAvailable` static で前手スナップショット保持、CPU 応手も含めた巻き戻し、FINISHED 中は無効、`undoAvailable && status != FINISHED` 時のみ「R: 待った」ガイド表示) を追加
 
 ### 未完成 (要対応)
 
@@ -412,11 +412,10 @@ default: break;  // ← 追加
 
 ### 将来実装予定 (Game3 あまちゃん次元の拡張)
 
-γ-3 + 後続 (2026-06-26) で「弱い CPU + ヒント表示 + 取得コマ数表示」を実装済。以下は未着手の追加候補:
+γ-3 + 後続 (2026-06-26) で「弱い CPU + ヒント表示 + 取得コマ数表示 + 待った機能」を実装済。以下は未着手の追加候補:
 
-1. **「待った」機能** — 盤面履歴 1 手分を保持、R キーで 1 手戻せる。コマを取られたときのストレス軽減。実装規模: 中〜大 (`ReversiBoard` の前フレーム状態を `ReversiBoard prevState` として Game3Scene 内 static 保持、R キー押下時に `state = prevState` で復元 + turn/status も同時に巻き戻し)
-2. **オプション設定のトグル化** — 「ヒント表示」「取得コマ数表示」「CPU 強弱 (`rbThinkRandom` ↔ `rbThinkCpu`)」「待った機能の有効/無効」を実行時に切り替え可能にする。Game3 (あまちゃん) はデフォルト全部 ON / 強さ弱、Game1 (ふつう) はデフォルト全部 OFF / 強さ強 が想定。実装規模: 中 — 設定構造体 (`typedef struct _ReversiOptions { bool showHints; bool showGain; bool weakCpu; bool allowUndo; }` 等) を [GameSceneMain.h](Project2/GameSceneMain.h) に追加してシーン側 static 保持、`renderXxxScene` のヒント/数字呼び出しを `if (opt.showHints)` でガード、`think[]` 選択を `opt.weakCpu` で分岐。UI は (a) メニューに「OPTIONS」シーンを追加するか、(b) ゲーム内でトグルキー (H=ヒント, G=取得数, U=待った 等) を割り当てるかの 2 案。要設計検討
-3. (任意) **盤面サイズ縮小モード** — 12×12 → 8×8 など。簡単な対局向け。実装規模: 大 (盤面サイズを定数固定から動的化、`rbInit` 拡張、`rbDraw*` 関数群のパラメータ化が必要)
+1. **オプション設定のトグル化** — 「ヒント表示」「取得コマ数表示」「CPU 強弱 (`rbThinkRandom` ↔ `rbThinkCpu`)」「待った機能の有効/無効」を実行時に切り替え可能にする。Game3 (あまちゃん) はデフォルト全部 ON / 強さ弱、Game1 (ふつう) はデフォルト全部 OFF / 強さ強 が想定。実装規模: 中 — 設定構造体 (`typedef struct _ReversiOptions { bool showHints; bool showGain; bool weakCpu; bool allowUndo; }` 等) を [GameSceneMain.h](Project2/GameSceneMain.h) に追加してシーン側 static 保持、`renderXxxScene` のヒント/数字呼び出しを `if (opt.showHints)` でガード、`think[]` 選択を `opt.weakCpu` で分岐。UI は (a) メニューに「OPTIONS」シーンを追加するか、(b) ゲーム内でトグルキー (H=ヒント, G=取得数, U=待った 等) を割り当てるかの 2 案。要設計検討
+2. (任意) **盤面サイズ縮小モード** — 12×12 → 8×8 など。簡単な対局向け。実装規模: 大 (盤面サイズを定数固定から動的化、`rbInit` 拡張、`rbDraw*` 関数群のパラメータ化が必要)
 
 ### 将来予定 (プロジェクト全体の拡張)
 
@@ -427,11 +426,11 @@ Game3 専用ではなく、ふつう/まきもどり/あまちゃんを横断す
 
 ### 将来予定 (リポジトリ整備)
 
-ゲーム機能とは別系統のリポジトリ/ドキュメント整備タスクは **全完了** (ドキュメント変更のためバージョン未消費、CHANGELOG `[Unreleased]` セクションに記録):
+ゲーム機能とは別系統のリポジトリ/ドキュメント整備タスクは **全完了**:
 
 - **CHANGELOG.md** 分割 → 1.5.5 で完了 ([CHANGELOG.md](CHANGELOG.md))
-- **LICENSE.md** (MIT) → 完了 ([LICENSE.md](LICENSE.md))、第三者ライブラリ (DxLib) ライセンス遵守注記を末尾セクションに併記
-- **README.md** (GitHub 公開用、JA 上 / EN 下) → 完了 ([README.md](README.md))、テキストのみ (スクリーンショットは将来追加余地)
+- **LICENSE.md** (MIT) → 1.5.6 で公開 ([LICENSE.md](LICENSE.md))、第三者ライブラリ (DxLib) ライセンス遵守注記を末尾セクションに併記 (作成自体は LICENSE/README コミット時、本体未変更だったため一時的に `[Unreleased]` に記録 → 1.5.6 で待った機能と同梱公開)
+- **README.md** (GitHub 公開用、JA 上 / EN 下) → 1.5.6 で公開 ([README.md](README.md))、テキストのみ (スクリーンショットは将来追加余地、同上)
 
 追加候補 (任意): 将来 README にスクリーンショットを追加する場合は `docs/screenshots/` ディレクトリを設置、メニュー画面 + Game3 ヒント表示画面の 2 枚程度が想定。
 
@@ -758,6 +757,20 @@ DxLib パスを `.props` に集約 + x64 ターゲット追加で 4 構成対応
 - **新関数 `rbDrawHints` を [GameSceneMain.cpp](Project2/GameSceneMain.cpp) に追加**: 全マスを `rbPutPiece(..., put_flag=false)` でシミュレーションして置けるマスを判定、`SetDrawBlendMode(DX_BLENDMODE_ALPHA, 128)` (50% 半透明) に切替えてマス中央に `DrawCircle` でオレンジ (`GetColor(255, 165, 0)`、関数冒頭で 1 度キャッシュ) 塗り潰し丸 (半径 = `CELL_PX / 3`) を描画。最後に `SetDrawBlendMode(DX_BLENDMODE_NOBLEND, 0)` で元に戻す (以降の描画に影響しないように必須)。色選定: 既存 `ColorSky` 流用案から再検討し、黒コマ/白コマ/暗緑盤面のいずれとも混同しにくく既存 `← Now` 矢印 (`ColorSky`) と区別される暖色を選択
 - **Game3 renderGame3Scene PLAYING フェーズで条件付き呼び出し**: `status == GAME_STATUS_PLAYING && turn == GAME_TURN_BLACK` 時のみ。TURN_MSG/PASS_MSG/FINISHED 中や CPU 手番中は混乱を招くため非表示
 - **Game1/Game2 では非表示**: ヒント表示は Game3 (あまちゃん) の差別化要素。Game1 (ふつう) / Game2 (まきもどり) は従来通りヒントなしで難易度を維持
+- **検証**: 全 4 構成リビルド (Debug|Win32 / Release|Win32 / Debug|x64 / Release|x64) いずれも警告 0 / エラー 0
+
+### Game3「待った」機能追加 (完了, 2026-06-26, 1.5.6)
+
+§10 将来予定 (旧候補 1) の「待った」機能を実装。Game3 (あまちゃん) 専用のあまちゃん向けストレス軽減機能。プランモードでユーザー承認を得てから着手 (前回はプラン提示を飛ばして実装してリバートになった反省を踏まえる)。
+
+- **新規 file-scope static** ([Game3Scene.cpp](Project2/Game3Scene.cpp)): `prevState` (ReversiBoard) / `prevStatus` (GAME_STATUS) / `prevTurn` (GAME_TURN) / `undoAvailable` (bool)
+- **`initGame3Scene` でリセット**: 4 つすべてゼロ/初期値に戻す (再入場時の前回値残留防止、ゲーム開始直後は undo 不可)
+- **`moveGame3Scene` PHASE_PLAYING 冒頭で R キー判定**: `status != GAME_STATUS_FINISHED && undoAvailable && CheckHitKey(KEY_INPUT_R) == 1` で `state/status/turn` を一括復元、`undoAvailable=false` に戻す。**FINISHED 状態では無効** (勝敗を尊重)
+- **思考前スナップショット + 確定時 persist**: PLAYING の else (思考) ブランチでプレイヤー手番のみ pre-move 状態を一時保持、`think` が `true` 返却したら `prev*` に persist して `undoAvailable=true`。CPU 手番では保存しない (CPU の応手も含めて巻き戻る設計)
+- **renderGame3Scene でガイド表示**: `undoAvailable && status != GAME_STATUS_FINISHED` 時のみ `PANEL_ROUND_LABEL_Y + 70` (= 290) 位置に「R: 待った」を `ColorSky` で描画。`PANEL_END_MSG_Y` (330) との衝突なし、FINISHED 中は非表示で誤解防止。テキストは初期実装の「Rキー: 待った」が 800x700 解像度の右端 (PANEL_X=590 開始でフォント 32 だと約 208px 必要、画面右端まで 210px しかなく「た」が見切れた) からはみ出したためプレイテスト後に短縮 — 1.5.6 リリース時の最終仕様
+- **スコープは Game3 のみ**: Game1 (ふつう) / Game2 (まきもどり) は据え置き。難易度維持と「あまちゃん」モードの差別化を兼ねる
+- **強制パス時の挙動**: `rbIsPass` true 時は `status = PASS_MSG` へ遷移し思考分岐に入らないため `prevState` は更新されない (パスは「手番をスキップ」であり「手を打った」ではない)。過去のプレイヤー手の `undoAvailable` は維持されるため、寛大な救済として PASS_MSG 中も R 押下で過去のプレイヤー手まで戻れる (CPU 応手 + パス込みで)
+- **バージョン**: 本体変更ありなので 1.5.5 → 1.5.6 にバンプ ([GameMain.cpp:41](Project2/GameMain.cpp#L41) タイトル + [MenuScene.cpp:66](Project2/MenuScene.cpp#L66) メニュー)。CHANGELOG `[Unreleased]` セクション (LICENSE/README 分) を `[1.5.6] - 2026-06-26` に確定して待った機能と同梱公開
 - **検証**: 全 4 構成リビルド (Debug|Win32 / Release|Win32 / Debug|x64 / Release|x64) いずれも警告 0 / エラー 0
 
 ### Game3 ヒントマスへの取得コマ数表示追加 (完了, 2026-06-26)

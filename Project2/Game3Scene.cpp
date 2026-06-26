@@ -16,6 +16,15 @@ static GAME_STATUS	status		= GAME_STATUS_TURN_MSG;
 static GAME_TURN	turn		= GAME_TURN_BLACK;
 static int			pieces[2]	= { -1, -1 };	//LoadDivGraph ハンドル (-1 = 未読込)
 
+//「待った」機能用の前手スナップショット (Game3 専用、あまちゃん向け 1 手戻し、1.5.6 で追加)
+//プレイヤーが思考確定 (コマを置いた) 瞬間に「その直前の盤面状態」を保存し、
+//R キー押下で state/status/turn を一括復元する。CPU の応手も巻き戻る (1 ターン = プレイヤー手 → CPU 手 のセット単位)
+//終局状態 (FINISHED) からは巻き戻し不可 — 勝敗を尊重してプレイを区切る方針
+static ReversiBoard	prevState		= {};
+static GAME_STATUS	prevStatus		= GAME_STATUS_TURN_MSG;
+static GAME_TURN	prevTurn		= GAME_TURN_BLACK;
+static bool			undoAvailable	= false;	//true = R で復元可能、開始直後 / undo 直後は false
+
 //外部定義 (GameMain.cpp にて宣言、Game3 で入力 → Game3 対局画面で表示)
 extern int Input, EdgeInput;
 extern char nameTmp[12];
@@ -32,6 +41,12 @@ BOOL initGame3Scene(void)
 	turn		= GAME_TURN_BLACK;
 	rbInit(&state);
 	rbSetMsg(&state, turn, 0);	//先頭ターンの "BLACK TURN" メッセージをセット
+
+	//「待った」スナップショットもリセット (再入場時の前回値残留防止、ゲーム開始直後は undo 不可)
+	prevState		= {};
+	prevStatus		= GAME_STATUS_TURN_MSG;
+	prevTurn		= GAME_TURN_BLACK;
+	undoAvailable	= false;
 
 	//フォント設定 (init で 1 回、move/render では呼ばない)
 	ChangeFont("ＭＳ 明朝");
@@ -61,6 +76,15 @@ void moveGame3Scene()
 		break;
 
 	case GAME3_PHASE_PLAYING:
+		//R キーで「待った」 (1.5.6) — PLAYING/TURN_MSG/PASS_MSG 中で有効、FINISHED 中は無効 (勝敗を尊重)
+		if (status != GAME_STATUS_FINISHED && undoAvailable && CheckHitKey(KEY_INPUT_R) == 1)
+		{
+			state			= prevState;
+			status			= prevStatus;
+			turn			= prevTurn;
+			undoAvailable	= false;	//1 回使ったら次のプレイヤー手まで使えない
+		}
+
 		//対局フェーズ: Game1 と同じ進行、ただし思考テーブルは { rbThinkPlayer, rbThinkRandom }
 		switch (status)
 		{
@@ -75,8 +99,23 @@ void moveGame3Scene()
 				//Game1/Game2 は rbThinkCpu (貪欲) だが、Game3 は rbThinkRandom (弱) で初心者向け
 				bool (*think[])(ReversiBoard*, int) = { rbThinkPlayer, rbThinkRandom };
 
+				//「待った」用スナップショット (1.5.6): プレイヤー手番の場合のみ思考前に pre-move 状態を一時保持
+				//思考が確定 (think が true 返却) した瞬間に prev* に persist し undo を有効化
+				ReversiBoard	preMoveState	= state;
+				GAME_STATUS		preMoveStatus	= status;
+				GAME_TURN		preMoveTurn		= turn;
+				bool isPlayerTurn = (turn == GAME_TURN_BLACK);
+
 				if ((*think[turn - 1])(&state, turn))
 				{
+					//プレイヤーがコマを置いた瞬間に prev* を更新 (CPU の手では保存しない、CPU 応手後の盤面から戻れる設計)
+					if (isPlayerTurn)
+					{
+						prevState		= preMoveState;
+						prevStatus		= preMoveStatus;
+						prevTurn		= preMoveTurn;
+						undoAvailable	= true;
+					}
 					turn = (GAME_TURN)(3 - (int)turn);
 					status = GAME_STATUS_TURN_MSG;
 					rbSetMsg(&state, turn, 0);
@@ -168,6 +207,14 @@ void renderGame3Scene(void)
 		SetFontSize(FONT_SIZE_DEFAULT);
 		DrawString(PANEL_X, PANEL_ROUND_LABEL_Y, "PLAYER:", ColorWhite);
 		DrawString(PANEL_X, PANEL_ROUND_LABEL_Y + 35, nameTmp, ColorSky);
+
+		//Game3 専用:「待った」可用時のガイド (1.5.6、R キーで 1 手戻せる、あまちゃん向けストレス軽減機能)
+		//FINISHED 中は R が無効化されているため非表示にして誤解防止
+		//テキストは 800x700 解像度で右端からはみ出さないよう「R: 待った」に短縮 (PANEL_X=590、フォント 32 で約 144px、右端まで余裕あり)
+		if (undoAvailable && status != GAME_STATUS_FINISHED)
+		{
+			DrawString(PANEL_X, PANEL_ROUND_LABEL_Y + 70, "R: 待った", ColorSky);
+		}
 
 		//ゲーム終了時のメニュー復帰ガイド (3 行で画面内に収める)
 		if (status == GAME_STATUS_FINISHED)

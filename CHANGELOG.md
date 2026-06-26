@@ -13,15 +13,26 @@
 
 ---
 
-## [Unreleased]
-
-プログラム本体未変更のドキュメント追加。次回の本体変更リリース時に取り込まれる。
+## [1.5.6] - 2026-06-26
 
 ### Added
 
+- **Game3 (あまちゃん次元)「待った」機能** — R キー押下で「プレイヤーが直近に置いた手の直前」(CPU の応手も含めて) に盤面/ターン/ステータスを巻き戻し ([Game3Scene.cpp](Project2/Game3Scene.cpp))
+  - 新規 file-scope static: `prevState` (ReversiBoard) / `prevStatus` (GAME_STATUS) / `prevTurn` (GAME_TURN) / `undoAvailable` (bool)
+  - `initGame3Scene` で 4 つすべてリセット (再入場時の前回値残留防止、ゲーム開始直後は undo 不可)
+  - `moveGame3Scene` PHASE_PLAYING 冒頭で R キー判定 + 一括復元 (`status != GAME_STATUS_FINISHED` ガード付き)
+  - PLAYING の思考 (else) ブランチでプレイヤー手番のみ思考前にスナップショット → 思考確定時 (`think` true 返却) に persist
+  - `renderGame3Scene` で「R: 待った」ガイド表示 (`undoAvailable && status != FINISHED` 時のみ、`PANEL_ROUND_LABEL_Y + 70` 位置、`ColorSky`)。テキストは 800x700 解像度で右端からはみ出さないよう短縮版を採用
+  - **終局状態 (`GAME_STATUS_FINISHED`) では無効** — 勝敗を尊重してプレイを区切る方針、R 押下も UI ガイドも非反応
+  - スコープは Game3 限定 (Game1=ふつう / Game2=まきもどり は難易度維持で据え置き)
 - [LICENSE.md](LICENSE.md) を新規作成 — **MIT License** 本文、Copyright (c) 2026 OutRose。末尾に「第三者ライブラリのライセンス」セクションで [DXライブラリ](https://dxlib.xsrv.jp/) (作者: 山田 巧 氏) のライセンス遵守注記を併記
 - [README.md](README.md) を新規作成 (GitHub 公開向け) — **日本語上 / 英語下** のバイリンガル構成。タイトル / 特徴 / 3 モード説明 / ビルド要件 / ビルド手順 / 操作方法 / ライセンス / ドキュメント / クレジットの 8 セクション
 - README から [LICENSE.md](LICENSE.md) / [CHANGELOG.md](CHANGELOG.md) / [CLAUDE.md](CLAUDE.md) / [Project2/Common.props](Project2/Common.props) への相互リンク
+
+### Changed
+
+- ウィンドウタイトル `Reverse Reversi 1.5.5` → `Reverse Reversi 1.5.6` ([GameMain.cpp](Project2/GameMain.cpp))
+- メニュー版数表示 `まきもどリバーシ Ver 1.5.5` → `Ver 1.5.6` ([MenuScene.cpp](Project2/MenuScene.cpp))
 
 ---
 
@@ -347,7 +358,7 @@
 
 ---
 
-[Unreleased]: https://github.com/OutRose/ReversedReversi/compare/v1.5.5...HEAD
+[1.5.6]: https://github.com/OutRose/ReversedReversi/releases/tag/v1.5.6
 [1.5.5]: https://github.com/OutRose/ReversedReversi/releases/tag/v1.5.5
 [1.5.4]: https://github.com/OutRose/ReversedReversi/releases/tag/v1.5.4
 [1.5.3]: https://github.com/OutRose/ReversedReversi/releases/tag/v1.5.3
