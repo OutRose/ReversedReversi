@@ -161,10 +161,10 @@ void renderGame3Scene(void)
 		DrawString(PANEL_X, PANEL_ROUND_LABEL_Y, "PLAYER:", ColorWhite);
 		DrawString(PANEL_X, PANEL_ROUND_LABEL_Y + 35, nameTmp, ColorSky);
 
-		//ゲーム終了時のメニュー復帰ガイド
+		//ゲーム終了時のメニュー復帰ガイド (3 行で画面内に収める)
 		if (status == GAME_STATUS_FINISHED)
 		{
-			DrawString(PANEL_X, PANEL_END_MSG_Y, "Xキーでメニュー\nESCキーで終了", ColorWhite);
+			DrawString(PANEL_X, PANEL_END_MSG_Y, "Xキーで\nメニュー\nESCで終了", ColorWhite);
 		}
 		break;
 	}

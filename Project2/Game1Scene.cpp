@@ -105,10 +105,10 @@ void renderGame1Scene(void)
 	rbDrawCountPanel(&state);
 	rbDrawTurnIndicator(turn);
 
-	//Game1 専用: ゲーム終了時のメニュー復帰ガイド (γ-1 で X キー復帰経路追加)
+	//Game1 専用: ゲーム終了時のメニュー復帰ガイド (γ-1 で X キー復帰経路追加、3 行で画面内に収める)
 	if (status == GAME_STATUS_FINISHED)
 	{
-		DrawString(PANEL_X, PANEL_END_MSG_GAME1_Y, "Xキーでメニュー\nESCキーで終了", ColorWhite);
+		DrawString(PANEL_X, PANEL_END_MSG_GAME1_Y, "Xキーで\nメニュー\nESCで終了", ColorWhite);
 	}
 }
 
