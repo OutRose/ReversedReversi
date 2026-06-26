@@ -407,17 +407,18 @@ void rbDrawTurnIndicator(int turn) {
 	}
 }
 
-//置ける場所を半透明丸でハイライト (Game3 あまちゃん用、初心者向けヒント表示)
-//全マス走査で rbPutPiece の put_flag=false シミュレーションを使って置けるマスを判定。
-//SetDrawBlendMode で 50% アルファに切替えてマス中央にオレンジ丸を描画、最後にブレンドモードを元に戻す。
+//置ける場所を半透明丸でハイライト + 取得コマ数を重ね描き (Game3 あまちゃん用、初心者向けヒント表示)
+//全マス走査で rbPutPiece の put_flag=false シミュレーションを使って置けるマスと裏返るコマ数を取得。
+//2 パス構成: パス 1 = 半透明オレンジ丸、パス 2 = オレンジの上に白で取得コマ数を中央寄せ表示。
 //色 (255, 165, 0) はオレンジ。黒コマ/白コマ/暗緑盤面のいずれとも混同しにくく、ヒントらしい暖色
 void rbDrawHints(ReversiBoard* state, int turn) {
 	//ヒント色 (関数冒頭で 1 度だけ計算、144 マス走査での GetColor 呼び出しを回避)
 	int hintColor = GetColor(255, 165, 0);
+	//呼び出し元のフォントサイズを退避 (パス 2 で小さくするため、関数末尾で復元)
+	int oldFontSize = GetFontSize();
 
-	//半透明描画モードに切替 (255 段階で 128 = 50%)
+	//パス 1: 半透明オレンジ丸を描画 (255 段階で 128 = 50% アルファ)
 	SetDrawBlendMode(DX_BLENDMODE_ALPHA, 128);
-
 	for (int y = 0; y < BOARD_SIZE; y++) for (int x = 0; x < BOARD_SIZE; x++) {
 		if (rbPutPiece(state, x, y, turn, false)) {
 			//マス中央に塗り潰し丸を描画 (半径はマスの 1/3、視認性と被らなさのバランス)
@@ -426,7 +427,22 @@ void rbDrawHints(ReversiBoard* state, int turn) {
 			DrawCircle(cx, cy, CELL_PX / 3, hintColor, TRUE);
 		}
 	}
-
-	//ブレンドモードを元に戻す (以降の描画に影響しないように必須)
+	//ブレンドモードを元に戻す (パス 2 のテキストは不透明、以降の描画に影響しないように必須)
 	SetDrawBlendMode(DX_BLENDMODE_NOBLEND, 0);
+
+	//パス 2: 取得コマ数を白で中央寄せ重ね描き (オレンジ円の中で白が最も視認性高い)
+	SetFontSize(HINT_GAIN_FONT_SIZE);
+	for (int y = 0; y < BOARD_SIZE; y++) for (int x = 0; x < BOARD_SIZE; x++) {
+		int gain = rbPutPiece(state, x, y, turn, false);
+		if (gain) {
+			int cx = x * CELL_PX + BOARD_ORIGIN_X + CELL_PX / 2;
+			int cy = y * CELL_PX + BOARD_ORIGIN_Y + CELL_PX / 2;
+			//桁数によらず中央配置するため、実描画幅を取得して半分ずらす
+			int textW = GetDrawFormatStringWidth("%d", gain);
+			DrawFormatString(cx - textW / 2, cy - HINT_GAIN_FONT_SIZE / 2, ColorWhite, "%d", gain);
+		}
+	}
+
+	//フォントサイズを呼び出し前の値に戻す (後続の rbDrawMsg/CountPanel/TurnIndicator に影響させない)
+	SetFontSize(oldFontSize);
 }

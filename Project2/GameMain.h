@@ -69,3 +69,4 @@ extern unsigned int ColorWhite, ColorRed, ColorSky;
 
 //フォント設定 (MenuScene 初期化時のサイズ)
 #define FONT_SIZE_DEFAULT   32
+#define HINT_GAIN_FONT_SIZE 20       //ヒントマス内の取得コマ数表示 (CELL_PX=48 に収まる小さめサイズ)

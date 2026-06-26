@@ -404,7 +404,7 @@ default: break;  // ← 追加
 
 - **`SCENE_GAME1` (ふつうの次元)** — 12×12 リバーシ本体、プレイヤー (黒、`rbThinkPlayer`) vs CPU (白、`rbThinkCpu`)、勝敗判定まで実装。γ-1 (2026-06-25) でフレーム駆動化 + シーン再入場リセット + X キーメニュー復帰実装済
 - **`SCENE_GAME2` (まきもどり次元、旧 SCENE_GAME4)** — Game1 の拡張版、2 ラウンド制 (`CurrentRound`)、ラウンド間で `rbRemovePieces(&state, 96)` で 96 マス削除、BGM 切替 (`changeBGM`)。γ-1 でフレーム駆動化 + ラウンド遷移 240 フレームカウンタ化 + 終了メッセージフリッカー解消 + ラウンド 2 終了時の X キーメニュー復帰 + `releaseGame2Scene` の `DxLib_End` 直呼び撤去 (γ-2 副次解消) 完了
-- **`SCENE_GAME3` (あまちゃん次元、旧 SCENE_GAME5)** — γ-3 (2026-06-26) で独自モード化完了。内部 2 フェーズ構造 (`GAME3_PHASE_NAME_ENTRY` → `GAME3_PHASE_PLAYING`)。名前入力は `KeyInputSingleCharString` + Enter キー検出で確定 (元の 1 文字入力即遷移バグ解消)。対局は Game1 と同じ盤面ロジック + 思考テーブル `{ rbThinkPlayer, rbThinkRandom }` で**弱い CPU** (置ける場所からランダム選択) を採用、初心者でも勝てる難易度。対局画面の右パネルに `PLAYER:` として `nameTmp` を表示。後続セッション (2026-06-26) で **ヒント表示** (`rbDrawHints`、置けるマスにオレンジ半透明丸、プレイヤー手番中のみ) を追加
+- **`SCENE_GAME3` (あまちゃん次元、旧 SCENE_GAME5)** — γ-3 (2026-06-26) で独自モード化完了。内部 2 フェーズ構造 (`GAME3_PHASE_NAME_ENTRY` → `GAME3_PHASE_PLAYING`)。名前入力は `KeyInputSingleCharString` + Enter キー検出で確定 (元の 1 文字入力即遷移バグ解消)。対局は Game1 と同じ盤面ロジック + 思考テーブル `{ rbThinkPlayer, rbThinkRandom }` で**弱い CPU** (置ける場所からランダム選択) を採用、初心者でも勝てる難易度。対局画面の右パネルに `PLAYER:` として `nameTmp` を表示。後続セッション (2026-06-26) で **ヒント表示** (`rbDrawHints`、置けるマスにオレンジ半透明丸、プレイヤー手番中のみ) + さらに後続 (2026-06-26) で **ヒントマスへの取得コマ数表示** (オレンジ円の中心に白で裏返り枚数を中央寄せ表示、`HINT_GAIN_FONT_SIZE=20`) を追加
 
 ### 未完成 (要対応)
 
@@ -412,11 +412,26 @@ default: break;  // ← 追加
 
 ### 将来実装予定 (Game3 あまちゃん次元の拡張)
 
-γ-3 + 後続 (2026-06-26) で「弱い CPU + ヒント表示」を実装済。以下は未着手の追加候補:
+γ-3 + 後続 (2026-06-26) で「弱い CPU + ヒント表示 + 取得コマ数表示」を実装済。以下は未着手の追加候補:
 
-1. **ヒントマスへの取得コマ数表示** — 現状の `rbDrawHints` はオレンジ丸を描画するだけだが、丸の中心または隣接位置に「そのマスに置いた場合に裏返るコマ数」を数字で重ねる。`rbPutPiece(state, x, y, turn, false)` の戻り値 (既に算出済、ヒント判定で使用中の値) を再利用するだけ。実装規模: 小 — `rbDrawHints` 内で `int gain = rbPutPiece(...)` の戻り値を受けて `if (gain) { DrawCircle(...); DrawFormatString(cx - N, cy - M, color, "%d", gain); }` に拡張。フォントサイズはマス (48px) に収まるよう要調整、文字色は丸の上で視認できる対比色 (黒 or 白)
-2. **「待った」機能** — 盤面履歴 1 手分を保持、R キーで 1 手戻せる。コマを取られたときのストレス軽減。実装規模: 中〜大 (`ReversiBoard` の前フレーム状態を `ReversiBoard prevState` として Game3Scene 内 static 保持、R キー押下時に `state = prevState` で復元 + turn/status も同時に巻き戻し)
+1. **「待った」機能** — 盤面履歴 1 手分を保持、R キーで 1 手戻せる。コマを取られたときのストレス軽減。実装規模: 中〜大 (`ReversiBoard` の前フレーム状態を `ReversiBoard prevState` として Game3Scene 内 static 保持、R キー押下時に `state = prevState` で復元 + turn/status も同時に巻き戻し)
+2. **オプション設定のトグル化** — 「ヒント表示」「取得コマ数表示」「CPU 強弱 (`rbThinkRandom` ↔ `rbThinkCpu`)」「待った機能の有効/無効」を実行時に切り替え可能にする。Game3 (あまちゃん) はデフォルト全部 ON / 強さ弱、Game1 (ふつう) はデフォルト全部 OFF / 強さ強 が想定。実装規模: 中 — 設定構造体 (`typedef struct _ReversiOptions { bool showHints; bool showGain; bool weakCpu; bool allowUndo; }` 等) を [GameSceneMain.h](Project2/GameSceneMain.h) に追加してシーン側 static 保持、`renderXxxScene` のヒント/数字呼び出しを `if (opt.showHints)` でガード、`think[]` 選択を `opt.weakCpu` で分岐。UI は (a) メニューに「OPTIONS」シーンを追加するか、(b) ゲーム内でトグルキー (H=ヒント, G=取得数, U=待った 等) を割り当てるかの 2 案。要設計検討
 3. (任意) **盤面サイズ縮小モード** — 12×12 → 8×8 など。簡単な対局向け。実装規模: 大 (盤面サイズを定数固定から動的化、`rbInit` 拡張、`rbDraw*` 関数群のパラメータ化が必要)
+
+### 将来予定 (プロジェクト全体の拡張)
+
+Game3 専用ではなく、ふつう/まきもどり/あまちゃんを横断するシステム機能:
+
+1. **プレイヤーランクシステム** — プレイの技巧 (勝敗、取得コマ差、無パス継続、勝った相手の強さ等) に応じて経験値を蓄積、目標値到達でランクアップ。ランク階層案 (英語表記): `NOVICE → APPRENTICE → ADEPT → EXPERT → MASTER → GRAND MASTER` または将棋風 (`級位 → 段位`)。**プレイヤー名 (Game3 の `nameTmp`) はあくまでハンドルネーム**、ランクは別軸の称号として右パネル `PLAYER:` 行と並べて表示する案。実装規模: 大 — 永続化が必須 (`save.dat` 等のバイナリ/INI/JSON、`GameMain` 起動時に読込・終了時に書込)、XP 計算ロジック (`int calcXpGain(int winnerColor, int gain, int passes, ...)` 等)、ランク閾値テーブル、ランクアップ演出、メニュー表示への反映 (タイトル横にランク章を出す等)。要設計検討事項多数 (各モード別に XP 倍率を変えるか / 取り戻しなしモードのみ XP 計上にするか / リセット手段 / モデレーション)
+2. **カラーパレット増設** — 現状 [GameMain.h](Project2/GameMain.h) extern は `ColorWhite/Red/Sky` の 3 色 + 関数内ローカル (オレンジ `(255,165,0)` for ヒント、盤面緑 `(0,100,20)`/`(0,140,20)` for Game1/Game2) のみ。ランクシステム導入や OPTIONS 画面新設、テーマ切替を見据えると追加色が必要 — 例: ランク章用の青銅/銀/金/プラチナ系 (`(205,127,50) / (192,192,192) / (255,215,0) / (229,228,226)`)、警告系の黄色 (`(255,235,0)`)、半透明オーバーレイ用の中間グレー、ボタンホバー色 等。**集約方法**: [GameMain.cpp](Project2/GameMain.cpp) 定義 + [GameMain.h](Project2/GameMain.h) extern の既存パターンを踏襲、または `ReversiPalette` 構造体に集約する案も検討。盤面色 (`GetColor(0, 100, 20)` 等) も extern 化して `BoardColorGame1` / `BoardColorGame2` のように命名統一すべき。実装規模: 小〜中 (色の追加自体は機械的、命名規約と集約方針の整理が主)
+
+### 将来予定 (リポジトリ整備)
+
+ゲーム機能とは別系統のリポジトリ/ドキュメント整備タスク。GitHub 公開向けのメタ情報整備:
+
+1. **CHANGELOG.md 分割** — 現状 [CLAUDE.md §13](#13-過去の整理作業履歴) に集約されている α-1 から最新までの変更履歴を、ルート直下の `CHANGELOG.md` に分離 (Keep a Changelog 形式推奨: `## [Unreleased]` / `## [1.1] - 2026-06-26` のような Markdown 見出し構造、Added/Changed/Fixed のカテゴリ分け)。CLAUDE.md §13 はリンクポインタに置換するか、Claude 作業文脈用の詳細版として併存させるか要検討。実装規模: 小〜中 (履歴の文体整理と分類が主)
+2. **README.md (GitHub 公開用)** — リポジトリルートに新規作成。タイトル「まきもどリバーシ (Reverse Reversi)」、スクリーンショット、3 モード説明 (ふつう/まきもどり/あまちゃん)、ビルド要件 (Visual Studio + DxLib + v145)、操作説明 (パッド/キー/マウス)、ライセンスへのリンク。日本語メインで、英語サマリを冒頭に併記する案も検討。実装規模: 中 (スクリーンショット用意 + 文章作成)
+3. **LICENSE.md (MIT)** — リポジトリルートに MIT License テキストを配置。著作権者表記は `Copyright (c) 2026 OutRose` (git config の user.name に合わせる)。実装規模: 極小 (テンプレート流用、年/氏名差し替え)。**注意**: DxLib 自体のライセンス (DXライブラリ ライセンス) は別途遵守が必要 — DxLib ライセンス表記の同梱を README に明記。実装規模: 小
 
 ### 空シーン雛形
 
@@ -741,6 +756,20 @@ DxLib パスを `.props` に集約 + x64 ターゲット追加で 4 構成対応
 - **新関数 `rbDrawHints` を [GameSceneMain.cpp](Project2/GameSceneMain.cpp) に追加**: 全マスを `rbPutPiece(..., put_flag=false)` でシミュレーションして置けるマスを判定、`SetDrawBlendMode(DX_BLENDMODE_ALPHA, 128)` (50% 半透明) に切替えてマス中央に `DrawCircle` でオレンジ (`GetColor(255, 165, 0)`、関数冒頭で 1 度キャッシュ) 塗り潰し丸 (半径 = `CELL_PX / 3`) を描画。最後に `SetDrawBlendMode(DX_BLENDMODE_NOBLEND, 0)` で元に戻す (以降の描画に影響しないように必須)。色選定: 既存 `ColorSky` 流用案から再検討し、黒コマ/白コマ/暗緑盤面のいずれとも混同しにくく既存 `← Now` 矢印 (`ColorSky`) と区別される暖色を選択
 - **Game3 renderGame3Scene PLAYING フェーズで条件付き呼び出し**: `status == GAME_STATUS_PLAYING && turn == GAME_TURN_BLACK` 時のみ。TURN_MSG/PASS_MSG/FINISHED 中や CPU 手番中は混乱を招くため非表示
 - **Game1/Game2 では非表示**: ヒント表示は Game3 (あまちゃん) の差別化要素。Game1 (ふつう) / Game2 (まきもどり) は従来通りヒントなしで難易度を維持
+- **検証**: 全 4 構成リビルド (Debug|Win32 / Release|Win32 / Debug|x64 / Release|x64) いずれも警告 0 / エラー 0
+
+### Game3 ヒントマスへの取得コマ数表示追加 (完了, 2026-06-26)
+
+§10 将来予定 (旧候補 1) の「ヒントマスへの取得コマ数表示」を実装。`rbDrawHints` をオレンジ丸描画のみから 2 パス構成に拡張。
+
+- **新規定数** ([GameMain.h](Project2/GameMain.h)): `HINT_GAIN_FONT_SIZE = 20` を追加 (FONT_SIZE_DEFAULT=32 のすぐ下、CELL_PX=48 のマス内に 2 桁数値が収まる小さめサイズ)
+- **`rbDrawHints` を 2 パス化** ([GameSceneMain.cpp](Project2/GameSceneMain.cpp)):
+  - **パス 1**: 従来通り `SetDrawBlendMode(DX_BLENDMODE_ALPHA, 128)` でオレンジ半透明丸を描画
+  - **`SetDrawBlendMode(DX_BLENDMODE_NOBLEND, 0)` でブレンド解除** (パス 2 のテキストを不透明白で描画するため)
+  - **パス 2**: 全マスを再走査し `int gain = rbPutPiece(..., false)` の戻り値を捕捉、`GetDrawFormatStringWidth("%d", gain)` で実描画幅を取得して中央寄せ、`DrawFormatString(cx - textW/2, cy - HINT_GAIN_FONT_SIZE/2, ColorWhite, "%d", gain)` で白文字描画
+  - **フォントサイズの退避/復元**: 関数冒頭で `GetFontSize()` 退避 → パス 2 直前で `SetFontSize(HINT_GAIN_FONT_SIZE)` → 関数末尾で復元。後続の `rbDrawMsg`/`rbDrawCountPanel`/`rbDrawTurnIndicator` への副作用を遮断
+- **色選定**: オレンジ円 (255,165,0) の上で白 (`ColorWhite`) が最も視認性が高い。黒文字も検討対象だが暗緑盤面とオレンジの境界で潰れやすいため不採用
+- **2 パス化の理由**: 1 パスでテキストも同時描画するとアルファブレンド中のため白文字が 50% 半透明となりオレンジに溶けて読みにくい。`rbPutPiece` の 2 回呼び出しは 144 マス走査でも計算量無視できる範囲
 - **検証**: 全 4 構成リビルド (Debug|Win32 / Release|Win32 / Debug|x64 / Release|x64) いずれも警告 0 / エラー 0
 
 ---
