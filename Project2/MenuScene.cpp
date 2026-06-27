@@ -64,7 +64,7 @@ void renderMenuScene(void)
 {
 	ChangeFont("ＭＳ 明朝");
 	//タイトル: フォント 40、中央上寄り
-	DrawString(280, 60, "まきもどリバーシ Ver 1.5.9", GetColor(255, 255, 255));
+	DrawString(280, 60, "まきもどリバーシ Ver 1.5.9.2", GetColor(255, 255, 255));
 
 	//６(2) メニュー項目の表示 (1.5.9 で開始 y=170、gapY=90 で 4 項目を 440 まで)
 	int x = 260, y = 170, gapY = 90;	//（x,y)：表示開始座標　gapY：行の高さ
@@ -82,9 +82,10 @@ void renderMenuScene(void)
 		}
 	}
 
-	//Credits: 画面右下に配置、フォント 28 で 5 行 (5×28=140、y=580 から 720 まで、768 内に収まる)
+	//Credits: 画面右下に配置、フォント 22 で 5 行 (5×22=110、y=580 から 690 まで、768 内に収まる)
+	//1.5.9.2 でフォント 28 → 22 に下げて URL 末尾 (".com/") の見切れを解消 (1280×768 で右端まで 460px、URL 31 文字を収める)
 	int oldFontSize = GetFontSize();
-	SetFontSize(28);
+	SetFontSize(22);
 	DrawString(820, 580, "Made with DX-Library 3.24f\n\nBGM: hitoshi & ambnience\nby Senses Circuit\nhttps://www.senses-circuit.com/",
 		GetColor(255, 255, 255));
 	SetFontSize(oldFontSize);

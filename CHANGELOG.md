@@ -14,6 +14,50 @@
 
 ---
 
+## [1.5.9.2] - 2026-06-27
+
+### Fixed
+
+- **MenuScene の Credits 表示見切れ修正** ([MenuScene.cpp:88](Project2/MenuScene.cpp)): 1.5.9 で 1280×768 化したメニューの Credits (画面右下、開始 x=820) が 1.5.9.1 のプレイテストで URL 末尾 (".com/") が画面右端で切れる事象を確認。フォント 28 では 1 文字あたり実描画幅 ~16px となり、URL 31 文字 (約 496px) が右側余白 460px (= 1280 - 820) に収まらなかった
+- **対策**: `SetFontSize(28)` → `SetFontSize(22)` に下げて 1 文字あたり ~12.6px に縮小、URL 31 文字 ≈ 391px で 460px 余白に 69px マージン込みで収まる。5 行 × 22 = 110px 縦使用 (旧 140px から 30px 圧縮)、y=580 開始 → 690 終了で 768 内に余裕
+
+### Changed
+
+- ウィンドウタイトル `Reverse Reversi 1.5.9.1` → `Reverse Reversi 1.5.9.2` ([GameMain.cpp](Project2/GameMain.cpp))
+- メニュー版数表示 `まきもどリバーシ Ver 1.5.9.1` → `Ver 1.5.9.2` ([MenuScene.cpp](Project2/MenuScene.cpp))
+
+### Notes
+
+- **挙動変化は Credits フォントサイズ縮小のみ** — タイトル / メニュー項目 / 各シーンの描画・ロジックはすべて 1.5.9.1 と完全同一
+- 1.5.9.1 で追加したカラーパレット 10 色は引き続き全コードから未参照の伏線として保持
+- 視覚的な fit 修正 (機能追加/削除なし) のため SUBPATCH バンプ、1.5.9.1 → 1.5.9.2
+
+---
+
+## [1.5.9.1] - 2026-06-27
+
+### Added
+
+- **カラーパレット拡張 10 色** を [GameMain.cpp](Project2/GameMain.cpp) 定義 + [GameMain.h](Project2/GameMain.h) extern 宣言として追加 (本リリースでは未参照の伏線、SUBPATCH バンプ対象)
+  - **ランク章 +6 色** (B2 プレイヤーランクシステム 10 ティア対応の余裕枠): `ColorIron` (110,120,140、Bronze 下位エントリー) / `ColorDiamond` (130,240,255、Platinum 上位の宝石系トップ) / `ColorEmerald` (50,200,130、ミントグリーン寄り) / `ColorRuby` (224,50,95、深紅ピンク寄り、ColorRed=純赤=「選択中」用と区別) / `ColorSapphire` (40,90,200、深サファイア青) / `ColorAmethyst` (170,100,200、アメジスト紫、既存色に紫系なし唯一性高)
+  - **汎用 UI +4 色** (テーマ化伏線、状態通知の用途分離): `ColorSuccess` (40,180,60、純緑寄り、Emerald ミントと用途分離) / `ColorError` (255,80,80、警報赤、ColorRed と用途分離) / `ColorInfo` (120,180,240、明るい青、Sapphire 深青/Hover 淡水色と段階分離) / `ColorAccent` (255,130,200、マゼンタ寄り、既存にピンク系なし)
+- 既存 `ColorBronze` / `Silver` / `Gold` / `Platinum` (4 色、1.5.6.1) と組み合わせて **計 10 ランク色** (LoL 9 ティア / Overwatch 7 ティア / 将棋系 9 段位どれにも対応可)。CLAUDE.md §10 のラフ案「NOVICE → APPRENTICE → ADEPT → EXPERT → MASTER → GRAND MASTER」(6 段) なら 4 色余る計算
+
+### Changed
+
+- ウィンドウタイトル `Reverse Reversi 1.5.9` → `Reverse Reversi 1.5.9.1` ([GameMain.cpp](Project2/GameMain.cpp))
+- メニュー版数表示 `まきもどリバーシ Ver 1.5.9` → `Ver 1.5.9.1` ([MenuScene.cpp](Project2/MenuScene.cpp))
+
+### Notes
+
+- **挙動完全不変** — 新規 extern 10 色はいずれの描画コードからも参照されない伏線。全シーンの描画 / メニュー操作 / 対局進行 / 「待った」 / OPTIONS / settings.ini 永続化はすべて 1.5.9 と完全同一
+- ファイルスコープ動的初期化: 新規 `GetColor()` 10 件は既存 10 件と同様に `SetGraphMode` 前で走るが、RGB 値が 16/24/32 bit いずれでも一意の結果を返す範囲なので動作不変 ([GameMain.cpp:17-19](Project2/GameMain.cpp#L17-L19) のコメント参照)
+- **`ColorXxx` extern 総数 10 → 20** (ランク章 4 → 10 / 汎用 UI 3 → 7 / 基本 3 不変)
+- 既存インライン `GetColor()` 呼び出し (盤面色 `(0,100,20)`/`(0,140,20)`、メッセージ箱グレー `(150,150,150)`、ヒントオレンジ `(255,165,0)`、OPTIONS プレビュー駒、Menu/Template の白赤リテラル) の extern 化は CLAUDE.md §10 未対応事項のまま継続
+- CLAUDE.md §10 項目 2「カラーパレット増設 (継続的)」の継続的タスク方針に沿った第 2 弾。今後も色追加が必要になり次第、SUBPATCH または機能側 PATCH に巻き込んで継続
+
+---
+
 ## [1.5.9] - 2026-06-27
 
 ### Added
@@ -514,6 +558,8 @@
 
 ---
 
+[1.5.9.2]: https://github.com/OutRose/ReversedReversi/releases/tag/v1.5.9.2
+[1.5.9.1]: https://github.com/OutRose/ReversedReversi/releases/tag/v1.5.9.1
 [1.5.9]: https://github.com/OutRose/ReversedReversi/releases/tag/v1.5.9
 [1.5.8]: https://github.com/OutRose/ReversedReversi/releases/tag/v1.5.8
 [1.5.7]: https://github.com/OutRose/ReversedReversi/releases/tag/v1.5.7

@@ -1,6 +1,6 @@
 ﻿# CLAUDE.md — ReversedReversi プロジェクト情報
 
-Visual Studio (MSVC) + DxLib による C++ リバーシゲーム。本体は [Project2.sln](Project2.sln) / [Project2/](Project2/) 配下。タイトルバー表記は「Reverse Reversi 1.5.9」、メニュー描画は「まきもどリバーシ Ver 1.5.9」([Project2/MenuScene.cpp:66](Project2/MenuScene.cpp#L66))。日本語 Windows 環境 (コードページ 932) でビルドする前提。バージョン履歴は [CHANGELOG.md](CHANGELOG.md)、ライセンスは [LICENSE.md](LICENSE.md) (MIT)、公開向け案内は [README.md](README.md) を参照 (採番ルール: フェーズ MINOR + サブターゲット PATCH + **挙動不変なコード変更は SUBPATCH** (4 セグメント、1.5.6.1 で導入)、ドキュメント/メタファイルのみの変更は据え置き — CHANGELOG 冒頭参照)。
+Visual Studio (MSVC) + DxLib による C++ リバーシゲーム。本体は [Project2.sln](Project2.sln) / [Project2/](Project2/) 配下。タイトルバー表記は「Reverse Reversi 1.5.9.2」、メニュー描画は「まきもどリバーシ Ver 1.5.9.2」([Project2/MenuScene.cpp:67](Project2/MenuScene.cpp#L67))。日本語 Windows 環境 (コードページ 932) でビルドする前提。バージョン履歴は [CHANGELOG.md](CHANGELOG.md)、ライセンスは [LICENSE.md](LICENSE.md) (MIT)、公開向け案内は [README.md](README.md) を参照 (採番ルール: フェーズ MINOR + サブターゲット PATCH + **挙動不変なコード変更は SUBPATCH** (4 セグメント、1.5.6.1 で導入)、ドキュメント/メタファイルのみの変更は据え置き — CHANGELOG 冒頭参照)。
 
 姉妹プロジェクトに [TwistTimeStopper](d:\Repositories\TwistTimeStopper) があり、シーン管理の雛形を共有している (元は同じ「Scene管理付き空プロジェクトRev2」テンプレート)。TwistTimeStopper は既に α/β/γ/δ のリファクタを完走しており、共通基盤化のリファレンスとして本ファイル中で頻繁に参照する。
 
@@ -352,7 +352,7 @@ Game1Scene / Game2Scene / Game3Scene では `rbThinkPlayer` ([GameSceneMain.cpp]
 ## 8. DxLib のお作法 (細かい点)
 
 - **フォント**: `SetFontSize(N)` / `ChangeFontType(DX_FONTTYPE_*)` / `ChangeFont("ＭＳ 明朝")` はグローバル状態なので、各シーンの init で必ず設定し直す ([MenuScene.cpp:20-21](Project2/MenuScene.cpp#L20))。**ReversedReversi では `ChangeFont("ＭＳ 明朝")` が毎フレーム呼ばれているシーンがある** (Game1/Game2=まきもどり の render 内) — 本来 init 時 1 回でよく、TwistTimeStopper では init で完結している
-- **色**: `GetColor(R, G, B)` の戻り値 `unsigned int` はキャッシュ。β-D-2 で [GameMain.cpp:20-22](Project2/GameMain.cpp#L20) に `ColorWhite/Red/Sky` を集約定義 + [GameMain.h](Project2/GameMain.h) で `extern` 公開 (旧 `ColorXxx2` 接尾辞は撤廃済)。1.5.6.1 (B3) で **ランク章用 4 色** (`ColorBronze/Silver/Gold/Platinum`) + **汎用 UI 用 3 色** (`ColorWarn/Overlay/Hover`) を追加、計 10 色。新規色を追加する際は同じ `ColorXxx` 命名 + extern 宣言 (GameMain.h) + 定義 (GameMain.cpp) の構造に合わせる。**カラーパレットは継続的拡張対象** — 新色 1 つ追加ごとに SUBPATCH バンプ (1.5.6.1 → 1.5.6.2 → ...)、機能と同時追加なら機能側 PATCH バンプに巻き込む方針 ([CHANGELOG.md](CHANGELOG.md) 採番ルール参照)
+- **色**: `GetColor(R, G, B)` の戻り値 `unsigned int` はキャッシュ。β-D-2 で [GameMain.cpp:20-22](Project2/GameMain.cpp#L20) に `ColorWhite/Red/Sky` を集約定義 + [GameMain.h](Project2/GameMain.h) で `extern` 公開 (旧 `ColorXxx2` 接尾辞は撤廃済)。1.5.6.1 (B3) で **ランク章用 4 色** (`ColorBronze/Silver/Gold/Platinum`) + **汎用 UI 用 3 色** (`ColorWarn/Overlay/Hover`) を追加 (計 10 色)。1.5.9.1 (2026-06-27) でさらに **ランク章用 +6 色** (`ColorIron/Diamond/Emerald/Ruby/Sapphire/Amethyst`) + **汎用 UI 用 +4 色** (`ColorSuccess/Error/Info/Accent`) を追加して **計 20 色** (ランク章 10 / 汎用 UI 7 / 基本 3)。新規色を追加する際は同じ `ColorXxx` 命名 + extern 宣言 (GameMain.h) + 定義 (GameMain.cpp) の構造に合わせる。**カラーパレットは継続的拡張対象** — 新色 1 つ追加ごとに SUBPATCH バンプ (1.5.6.1 → 1.5.6.2 → ...)、まとまった色バッチでも SUBPATCH 1 つに集約可 (1.5.6.1 で 7 色 / 1.5.9.1 で 10 色のバッチ追加実績)、機能と同時追加なら機能側 PATCH バンプに巻き込む方針 ([CHANGELOG.md](CHANGELOG.md) 採番ルール参照)
 - **座標系**: 原点 (0, 0) は **画面左上**。`DrawString(x, y, str, color)` で直接指定
 - **乱数**: `GetRand(n)` で 0〜n-1。シードは起動時に `GetNowCount()` で `SRand` 初期化する慣習 (TwistTimeStopper では `WinMain` 冒頭)
 - **画像**: `LoadGraph` / `LoadDivGraph` の戻り値ハンドル `int` を保持し `DeleteGraph` で解放。γ-1 (2026-06-25) で Game1/Game2 を `LoadDivGraph` → init、`DeleteGraph` → release に整理済 (`static int pieces[2] = { -1, -1 };` でハンドル保持、再入場時の二重ロード防止)。リソースリーク解消
@@ -430,7 +430,7 @@ default: break;  // ← 追加
 Game3 専用ではなく、ふつう/まきもどり/あまちゃんを横断するシステム機能:
 
 1. **プレイヤーランクシステム** — プレイの技巧 (勝敗、取得コマ差、無パス継続、勝った相手の強さ等) に応じて経験値を蓄積、目標値到達でランクアップ。ランク階層案 (英語表記): `NOVICE → APPRENTICE → ADEPT → EXPERT → MASTER → GRAND MASTER` または将棋風 (`級位 → 段位`)。**プレイヤー名 (Game3 の `nameTmp`) はあくまでハンドルネーム**、ランクは別軸の称号として右パネル `PLAYER:` 行と並べて表示する案。実装規模: 大 — 永続化が必須 (`save.dat` 等のバイナリ/INI/JSON、または既存 `settings.ini` の拡張、`GameMain` 起動時に読込・終了時に書込)、XP 計算ロジック (`int calcXpGain(int winnerColor, int gain, int passes, ...)` 等)、ランク閾値テーブル、ランクアップ演出、メニュー表示への反映 (タイトル横にランク章を出す等)。要設計検討事項多数 (各モード別に XP 倍率を変えるか / 取り戻しなしモードのみ XP 計上にするか / リセット手段 / モデレーション)
-2. **カラーパレット増設 (継続的)** — 1.5.6.1 (2026-06-26) で初期 7 色 (`ColorBronze`/`Silver`/`Gold`/`Platinum`/`Warn`/`Overlay`/`Hover`) を `ColorXxx` 命名で extern 追加済 ([CHANGELOG.md](CHANGELOG.md) [1.5.6.1] 参照)。本リリースでは未参照、B1/B2/テーマ化等の将来機能で使用される伏線。**継続的タスク** として残置: 今後の機能拡張で新色が必要になり次第、同じ `ColorXxx` 命名で [GameMain.cpp](Project2/GameMain.cpp) 定義 + [GameMain.h](Project2/GameMain.h) extern 追加を継続。1 色追加ごとに SUBPATCH バンプ (1.5.6.1 → 1.5.6.2 → ...)、機能と同時追加の場合は機能側 PATCH バンプに巻き込み。**未対応**: 既存インライン `GetColor()` 呼び出し (盤面色 `(0,100,20)` / `(0,140,20)`、メッセージ箱グレー `(150,150,150)`、ヒントオレンジ `(255,165,0)`、OPTIONS プレビューの黒/白駒、MenuScene/GameSceneTemplate の白赤リテラル) の extern 化 — 別タスクで一括対応する場合 `BoardColorDark/Light` `MsgBoxBg` `ColorHintOrange` 等の命名統一を要設計検討
+2. **カラーパレット増設 (継続的)** — 1.5.6.1 (2026-06-26) で初期 7 色 (`ColorBronze`/`Silver`/`Gold`/`Platinum`/`Warn`/`Overlay`/`Hover`) を `ColorXxx` 命名で extern 追加済 ([CHANGELOG.md](CHANGELOG.md) [1.5.6.1] 参照)。**1.5.9.1 (2026-06-27) でランク章 +6 色** (`ColorIron`/`Diamond`/`Emerald`/`Ruby`/`Sapphire`/`Amethyst`) **+ 汎用 UI +4 色** (`ColorSuccess`/`Error`/`Info`/`Accent`) **を追加して計 20 色** (CHANGELOG.md [1.5.9.1] 参照)。ランク章 10 色 (Bronze〜Platinum 4 + Iron/Diamond/Emerald/Ruby/Sapphire/Amethyst 6) で LoL 9 ティア / Overwatch 7 ティア / 将棋 9 段位どれにも余裕で対応可能。本リリースでは未参照、B1/B2/テーマ化等の将来機能で使用される伏線。**継続的タスク** として残置: 今後の機能拡張で新色が必要になり次第、同じ `ColorXxx` 命名で [GameMain.cpp](Project2/GameMain.cpp) 定義 + [GameMain.h](Project2/GameMain.h) extern 追加を継続。1 色追加ごとに SUBPATCH バンプ (1.5.6.1 → 1.5.6.2 → ...)、まとまった色バッチでも SUBPATCH 1 つに集約可 (1.5.6.1 で 7 色 / 1.5.9.1 で 10 色のバッチ追加実績)、機能と同時追加の場合は機能側 PATCH バンプに巻き込み。**未対応**: 既存インライン `GetColor()` 呼び出し (盤面色 `(0,100,20)` / `(0,140,20)`、メッセージ箱グレー `(150,150,150)`、ヒントオレンジ `(255,165,0)`、OPTIONS プレビューの黒/白駒、MenuScene/GameSceneTemplate の白赤リテラル) の extern 化 — 別タスクで一括対応する場合 `BoardColorDark/Light` `MsgBoxBg` `ColorHintOrange` 等の命名統一を要設計検討
 3. **描画品質改善 (ガビガビ対策)** — 1.5.9 で盤面 720×720 / コマ 60〜120px に拡張後、ユーザー報告で **盤面グリッド線とコマ円輪郭のジャギー** が顕在化 (2026-06-27)。原因は 2 系統: **(a) `DrawLine` の AA 無し**: 1px 細線をビットマップ直書きしているため斜め成分のないグリッド線でも端部がジャギー、**(b) `DrawExtendGraph` のニアレストネイバー拡大**: piece.png 47×47 ソースを 60/72/90/120px に約 1.28〜2.55× 拡大、デフォルトは `DX_DRAWMODE_NEAREST` のため拡大率が大きいほどジャギー悪化。**対策候補** (どれか単独 or 複合): **(1) `SetDrawMode(DX_DRAWMODE_BILINEAR)` を `rbDrawPieces` 内で局所適用**: バイリニア補間で輪郭平滑化、関数末尾で `DX_DRAWMODE_NEAREST` 復元 (副作用最小、実装コスト最低)、**(2) piece.png 高解像度差し替え**: 120×120 ソースを用意し最大セル時に等倍、他サイズで縮小描画 (縮小はジャギー出にくい、画質改善効果最大、画像差し替えコスト + `DX_DRAWMODE_BILINEAR` 併用が定石)、**(3) グリッド線の太線化 or 盤面背景テクスチャ化**: `DrawLine` を 2px に重ね描き or 盤面 + グリッドを 1 枚のテクスチャに統合して `DrawGraph` で描画、テクスチャ系統は `DX_DRAWMODE_BILINEAR` で平滑化可能。**推奨は (1) 単独着手**: 即効性高くロールバック容易、効果不足なら (2) を追加検討。版数は SUBPATCH (1.5.9.1) または挙動変更含めて機能 PATCH バンプに巻き込み
 
 ### 将来予定 (リポジトリ整備)
@@ -929,6 +929,56 @@ DxLib パスを `.props` に集約 + x64 ターゲット追加で 4 構成対応
 **留意点**:
 - piece.png (47×47 ソース) は `DrawExtendGraph` で 60/72/90/120px 表示に拡大される。約 2.5× 拡大で多少ジャギーが出る可能性 (将来高解像度差し替え余地、本リリースでは画像維持)
 - `SetWindowSizeChangeEnableFlag(true)` で実行中リサイズも引き続き機能
+
+**検証**: 全 4 構成リビルド (Debug|Win32 / Release|Win32 / Debug|x64 / Release|x64) いずれも警告 0 / エラー 0
+
+### カラーパレット拡張 ランク 10 ティア対応 + 汎用 UI 用途分離 (完了, 2026-06-27, 1.5.9.1)
+
+§10 将来予定 (プロジェクト全体の拡張) 項目 2「カラーパレット増設 (継続的)」の第 2 弾。1.5.6.1 (初期 7 色) に続き 10 色をバッチ追加。プランモードでユーザー承認を得てから着手 (スコープ Option B: ランク章 +6 + 汎用 UI +4)。**動機**: B2 プレイヤーランクシステム本実装時に「ランク段階数を 6→8 に変えたい → 新色が足りない」となる順番を避けるための **準備的タスク**。テーマ化伏線も同梱して、後でテーマ周りを起こすときに色追加とテーマ実装を切り分ける。
+
+**追加 10 色**:
+
+- **ランク章 +6 色** (B2 ランクシステム 10 ティア対応の余裕枠): `ColorIron` (110,120,140、鋼鉄グレー、Bronze 下位のエントリーティア) / `ColorDiamond` (130,240,255、シアン水色、Platinum 上位の宝石系トップ) / `ColorEmerald` (50,200,130、ミントグリーン寄り) / `ColorRuby` (224,50,95、深紅ピンク寄り、ColorRed=純赤=「選択中」用と区別) / `ColorSapphire` (40,90,200、深サファイア青) / `ColorAmethyst` (170,100,200、アメジスト紫、既存色に紫系なし唯一性高)
+- **汎用 UI +4 色** (テーマ化伏線、状態通知の用途分離): `ColorSuccess` (40,180,60、純緑寄り、Emerald ミントと用途分離) / `ColorError` (255,80,80、警報赤、ColorRed=純赤=「選択中」用と用途分離) / `ColorInfo` (120,180,240、明るい青、Sapphire 深青/Hover 淡水色と段階分離) / `ColorAccent` (255,130,200、マゼンタ寄り、既存にピンク系なし)
+
+**色相区別の根拠** (近隣色との衝突回避):
+
+- `ColorDiamond` (130,240,255) vs `ColorSky` (40,235,255) vs `ColorHover` (180,220,255): R 値で段階を分離 (40 / 130 / 180)、Sky=純シアン / Diamond=シアン水色 / Hover=淡水色
+- `ColorRuby` (224,50,95) vs `ColorRed` (255,0,0) vs `ColorError` (255,80,80): Ruby=深紅ピンク寄り (彩度低) / Red=純赤 (「選択中」用) / Error=警報赤 (R 255 で輝度高)
+- `ColorEmerald` (50,200,130) vs `ColorSuccess` (40,180,60): Emerald=ミント (B=130) / Success=純緑 (B=60)、用途分離 (Emerald はランク章、Success は状態通知)
+- `ColorSapphire` (40,90,200) vs `ColorInfo` (120,180,240): Sapphire=深青 (彩度高) / Info=明るい青 (彩度低)、明度で段階分離
+
+**ファイル変更**:
+
+- [GameMain.cpp](Project2/GameMain.cpp): 既存 `ColorHover` 定義 (line 34) の直後に 2 ブロック追加 (ランク章 6 + 汎用 UI 4)、各色に用途分離コメント付与
+- [GameMain.h](Project2/GameMain.h): 既存 `ColorWarn/Overlay/Hover` extern (line 32) の直後に 2 ブロック追加 (ランク章 6 を 1 行、汎用 UI 4 を 1 行)
+- [GameMain.cpp](Project2/GameMain.cpp): ウィンドウタイトル `Reverse Reversi 1.5.9` → `1.5.9.1`
+- [MenuScene.cpp](Project2/MenuScene.cpp): メニュー版数 `Ver 1.5.9` → `Ver 1.5.9.1`
+- [CHANGELOG.md](CHANGELOG.md): [1.5.9.1] - 2026-06-27 セクション新設 + link table 追加
+- §1 / §8 / §10 / §13 (本セクション) を更新
+
+**バージョン**: 機能変更なし (全 10 色いずれの描画コードからも未参照、純粋に extern 定数追加のみ) なので **SUBPATCH バンプ 1.5.9 → 1.5.9.1**。CLAUDE.md §1 採番ルール「挙動不変なコード変更は SUBPATCH」 + §10 項目 2「まとまった色バッチでも SUBPATCH 1 つに集約可」(1.5.6.1 の 7 色バッチ前例) に沿う
+
+**動作不変保証**: 全シーンの描画 / メニュー操作 / 対局進行 / 「待った」 / OPTIONS / settings.ini 永続化はすべて 1.5.9 と完全同一。新規 10 色は B1/B2/テーマ化等の将来機能で参照される伏線
+
+**`ColorXxx` extern 総数**: 10 → **20** (ランク章 4 → 10 / 汎用 UI 3 → 7 / 基本 3 不変)
+
+**検証**: 全 4 構成リビルド (Debug|Win32 / Release|Win32 / Debug|x64 / Release|x64) いずれも警告 0 / エラー 0
+
+### MenuScene Credits 見切れ修正 (完了, 2026-06-27, 1.5.9.2)
+
+1.5.9.1 リリース後のユーザープレイテストで、メニュー画面右下の Credits 表示 (Made with DX-Library 3.24f / BGM / by Senses Circuit / URL) の URL 末尾 (".com/") が画面右端で見切れる事象を確認。フォントを小さくする方針で対策 (ユーザー指示)。
+
+**原因**: 1.5.9 で 1280×768 に画面拡張した際 Credits を画面右下 (x=820, y=580) に再配置し SetFontSize(28) を採用したが、URL `https://www.senses-circuit.com/` (31 文字、ASCII チャンク) を MS 明朝で描画すると 1 文字 ~16px × 31 ≈ 496px の幅となり、画面右端まで残された 460px (= 1280 - 820) に収まらず約 36px ぶん見切れた
+
+**修正** ([MenuScene.cpp](Project2/MenuScene.cpp)): `SetFontSize(28)` → **`SetFontSize(22)`** に変更
+- 1 文字幅 16px → ~12.6px (22/28 = 0.786×) で 31 文字 ≈ 391px に縮小、460px 余白に 69px マージン込みで収まる
+- 5 行高さ 140px → **110px** に圧縮、y=580 開始 → 690 終了で 768 内に 78px 下マージン確保
+- 視認性: 22px はメニュー本文 40px の約半分だが、Credits は補足情報のためマージンを取って小さくしても問題なし
+
+**スコープは Credits のみ**: タイトル "まきもどリバーシ Ver 1.5.9.2" (フォント 40)、メニュー項目 4 行 (フォント 40)、ゲーム本体シーンはすべて 1.5.9.1 と完全同一
+
+**バージョン**: コード変更で挙動 (Credits 見え方) が変わるが、視覚的 fit 修正のみで機能追加/削除なし、SUBPATCH バンプ 1.5.9.1 → **1.5.9.2** ([GameMain.cpp](Project2/GameMain.cpp) タイトル + [MenuScene.cpp](Project2/MenuScene.cpp) メニュー)
 
 **検証**: 全 4 構成リビルド (Debug|Win32 / Release|Win32 / Debug|x64 / Release|x64) いずれも警告 0 / エラー 0
 
