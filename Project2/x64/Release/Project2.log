@@ -1,1 +1,13 @@
-﻿
+﻿  Game1Scene.cpp
+  Game2Scene.cpp
+  Game3Scene.cpp
+  Game4Scene.cpp
+  GameMain.cpp
+  GameSceneMain.cpp
+  MenuScene.cpp
+  OptionsScene.cpp
+  コード生成しています。
+  Previous IPDB not found, fall back to full compilation.
+  All 196 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
+  コード生成が終了しました。
+  Project2.vcxproj -> D:\Repositories\ReversedReversi\x64\Release\Project2.exe

@@ -76,8 +76,9 @@ void moveGame3Scene()
 		break;
 
 	case GAME3_PHASE_PLAYING:
-		//R キーで「待った」 (1.5.6) — PLAYING/TURN_MSG/PASS_MSG 中で有効、FINISHED 中は無効 (勝敗を尊重)
-		if (status != GAME_STATUS_FINISHED && undoAvailable && CheckHitKey(KEY_INPUT_R) == 1)
+		//R キーで「待った」 (1.5.6 で導入、1.5.7 で allowUndo ゲート追加)
+		//PLAYING/TURN_MSG/PASS_MSG 中で有効、FINISHED 中は無効 (勝敗を尊重)、allowUndo=false なら無効
+		if (g_game3Options.allowUndo && status != GAME_STATUS_FINISHED && undoAvailable && CheckHitKey(KEY_INPUT_R) == 1)
 		{
 			state			= prevState;
 			status			= prevStatus;
@@ -85,7 +86,7 @@ void moveGame3Scene()
 			undoAvailable	= false;	//1 回使ったら次のプレイヤー手まで使えない
 		}
 
-		//対局フェーズ: Game1 と同じ進行、ただし思考テーブルは { rbThinkPlayer, rbThinkRandom }
+		//対局フェーズ: Game1 と同じ進行、思考テーブルは weakCpu トグルで切替 (1.5.7 で導入)
 		switch (status)
 		{
 		case GAME_STATUS_PLAYING:
@@ -96,10 +97,10 @@ void moveGame3Scene()
 			}
 			else
 			{
-				//Game1/Game2 は rbThinkCpu (貪欲) だが、Game3 は rbThinkRandom (弱) で初心者向け
-				bool (*think[])(ReversiBoard*, int) = { rbThinkPlayer, rbThinkRandom };
+				//weakCpu=true なら rbThinkRandom (弱、置けるマスからランダム選択)、false なら rbThinkCpu (貪欲、最多取得)
+				bool (*think[])(ReversiBoard*, int) = { rbThinkPlayer, g_game3Options.weakCpu ? rbThinkRandom : rbThinkCpu };
 
-				//「待った」用スナップショット (1.5.6): プレイヤー手番の場合のみ思考前に pre-move 状態を一時保持
+				//「待った」用スナップショット (1.5.6 で導入、1.5.7 で allowUndo ゲート追加): プレイヤー手番のみ思考前に保持
 				//思考が確定 (think が true 返却) した瞬間に prev* に persist し undo を有効化
 				ReversiBoard	preMoveState	= state;
 				GAME_STATUS		preMoveStatus	= status;
@@ -109,7 +110,8 @@ void moveGame3Scene()
 				if ((*think[turn - 1])(&state, turn))
 				{
 					//プレイヤーがコマを置いた瞬間に prev* を更新 (CPU の手では保存しない、CPU 応手後の盤面から戻れる設計)
-					if (isPlayerTurn)
+					//allowUndo=false ならスナップショット save も skip (パフォーマンスより意図の明示性優先)
+					if (g_game3Options.allowUndo && isPlayerTurn)
 					{
 						prevState		= preMoveState;
 						prevStatus		= preMoveStatus;
@@ -192,11 +194,12 @@ void renderGame3Scene(void)
 		rbDrawGrid();
 		rbDrawPieces(&state, pieces);
 
-		//Game3 専用: プレイヤー手番中のみヒント表示 (置けるマスを半透明丸でハイライト、あまちゃん向け)
+		//Game3 専用: プレイヤー手番中のみヒント表示 (1.5.7 で showHints / showGain トグル参照)
 		//PLAYING 中以外 (TURN_MSG/PASS_MSG/FINISHED) は混乱を招くため非表示、CPU 手番も同様
-		if (status == GAME_STATUS_PLAYING && turn == GAME_TURN_BLACK)
+		//showHints=false なら非表示、showHints=true でも showGain=false ならオレンジ丸のみで数字なし
+		if (g_game3Options.showHints && status == GAME_STATUS_PLAYING && turn == GAME_TURN_BLACK)
 		{
-			rbDrawHints(&state, turn);
+			rbDrawHints(&state, turn, g_game3Options.showGain);
 		}
 
 		rbDrawMsg(&state, status);
@@ -208,10 +211,10 @@ void renderGame3Scene(void)
 		DrawString(PANEL_X, PANEL_ROUND_LABEL_Y, "PLAYER:", ColorWhite);
 		DrawString(PANEL_X, PANEL_ROUND_LABEL_Y + 35, nameTmp, ColorSky);
 
-		//Game3 専用:「待った」可用時のガイド (1.5.6、R キーで 1 手戻せる、あまちゃん向けストレス軽減機能)
-		//FINISHED 中は R が無効化されているため非表示にして誤解防止
-		//テキストは 800x700 解像度で右端からはみ出さないよう「R: 待った」に短縮 (PANEL_X=590、フォント 32 で約 144px、右端まで余裕あり)
-		if (undoAvailable && status != GAME_STATUS_FINISHED)
+		//Game3 専用:「待った」可用時のガイド (1.5.6 で導入、1.5.7 で allowUndo ゲート追加)
+		//allowUndo=false / FINISHED 中は R が無効化されているため非表示にして誤解防止
+		//テキストは 800x700 解像度で右端からはみ出さないよう「R: 待った」に短縮 (PANEL_X=590、フォント 32 で約 144px)
+		if (g_game3Options.allowUndo && undoAvailable && status != GAME_STATUS_FINISHED)
 		{
 			DrawString(PANEL_X, PANEL_ROUND_LABEL_Y + 70, "R: 待った", ColorSky);
 		}

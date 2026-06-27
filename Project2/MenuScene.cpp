@@ -2,10 +2,10 @@
 #include "GameSceneMain.h"
 #include "MenuScene.h"
 
-//メニュー項目のシーン番号の配列
-#define MENU_MAX 3
-SCENE_NO menu[MENU_MAX] = { SCENE_GAME1, SCENE_GAME3, SCENE_GAME2 };
-char* menuList[3] = { "ふつうの次元：頭をほどよく使う", "あまちゃん次元：頭をあまり使わない",  "まきもどり次元：頭をかなり使う" };
+//メニュー項目のシーン番号の配列 (1.5.7 で「オプション設定」を追加、MENU_MAX 3 → 4)
+#define MENU_MAX 4
+SCENE_NO menu[MENU_MAX] = { SCENE_GAME1, SCENE_GAME3, SCENE_GAME2, SCENE_OPTIONS };
+char* menuList[MENU_MAX] = { "ふつうの次元：頭をほどよく使う", "あまちゃん次元：頭をあまり使わない",  "まきもどり次元：頭をかなり使う", "オプション設定" };
 //選択されたゲームを表すメニュー番号の初期化（menuの添え字）
 static int selectedGame = 0;
 
@@ -63,7 +63,7 @@ void moveMenuScene()
 void renderMenuScene(void)
 {
 	ChangeFont("ＭＳ 明朝");
-	DrawString(120, 50, "まきもどリバーシ Ver 1.5.6.1", GetColor(255, 255, 255));
+	DrawString(120, 50, "まきもどリバーシ Ver 1.5.7", GetColor(255, 255, 255));
 	DrawString(160, 480, "Made with DX-Library 3.24f\n\nBGM: hitoshi & ambnience\nby Senses Circuit\nhttps://www.senses-circuit.com/",
 		GetColor(255, 255, 255));
 

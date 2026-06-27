@@ -8,6 +8,7 @@
 #include "Game3Scene.h"
 #include "Game4Scene.h"
 #include "MenuScene.h"
+#include "OptionsScene.h"	//1.5.7 で導入
 
 //このファイル内だけで使用する関数のプロトタイプ宣言
 //現在のシーンの初期化処理 (BOOL: 成功 TRUE / 失敗 FALSE、FrameMove 内のフォールバック判定で参照)
@@ -40,6 +41,7 @@ static const SCENE_HANDLERS sceneTable[SCENE_MAX] = {
 	/* [SCENE_GAME2] */ { initGame2Scene, moveGame2Scene, renderGame2Scene, releaseGame2Scene, Game2SceneCollideCallback },
 	/* [SCENE_GAME3] */ { initGame3Scene, moveGame3Scene, renderGame3Scene, releaseGame3Scene, Game3SceneCollideCallback },
 	/* [SCENE_GAME4] */ { initGame4Scene, moveGame4Scene, renderGame4Scene, releaseGame4Scene, Game4SceneCollideCallback },
+	/* [SCENE_OPTIONS] */ { initOptionsScene, moveOptionsScene, renderOptionsScene, releaseOptionsScene, OptionsSceneCollideCallback },
 };
 
 //sceneNo が sceneTable の有効インデックス範囲内か判定するヘルパ
@@ -411,7 +413,7 @@ void rbDrawTurnIndicator(int turn) {
 //全マス走査で rbPutPiece の put_flag=false シミュレーションを使って置けるマスと裏返るコマ数を取得。
 //2 パス構成: パス 1 = 半透明オレンジ丸、パス 2 = オレンジの上に白で取得コマ数を中央寄せ表示。
 //色 (255, 165, 0) はオレンジ。黒コマ/白コマ/暗緑盤面のいずれとも混同しにくく、ヒントらしい暖色
-void rbDrawHints(ReversiBoard* state, int turn) {
+void rbDrawHints(ReversiBoard* state, int turn, bool showGain) {
 	//ヒント色 (関数冒頭で 1 度だけ計算、144 マス走査での GetColor 呼び出しを回避)
 	int hintColor = GetColor(255, 165, 0);
 	//呼び出し元のフォントサイズを退避 (パス 2 で小さくするため、関数末尾で復元)
@@ -430,19 +432,22 @@ void rbDrawHints(ReversiBoard* state, int turn) {
 	//ブレンドモードを元に戻す (パス 2 のテキストは不透明、以降の描画に影響しないように必須)
 	SetDrawBlendMode(DX_BLENDMODE_NOBLEND, 0);
 
-	//パス 2: 取得コマ数を白で中央寄せ重ね描き (オレンジ円の中で白が最も視認性高い)
-	SetFontSize(HINT_GAIN_FONT_SIZE);
-	for (int y = 0; y < BOARD_SIZE; y++) for (int x = 0; x < BOARD_SIZE; x++) {
-		int gain = rbPutPiece(state, x, y, turn, false);
-		if (gain) {
-			int cx = x * CELL_PX + BOARD_ORIGIN_X + CELL_PX / 2;
-			int cy = y * CELL_PX + BOARD_ORIGIN_Y + CELL_PX / 2;
-			//桁数によらず中央配置するため、実描画幅を取得して半分ずらす
-			int textW = GetDrawFormatStringWidth("%d", gain);
-			DrawFormatString(cx - textW / 2, cy - HINT_GAIN_FONT_SIZE / 2, ColorWhite, "%d", gain);
+	//パス 2: 取得コマ数を白で中央寄せ重ね描き (showGain=false ならスキップ、1.5.7 でトグル化)
+	if (showGain)
+	{
+		SetFontSize(HINT_GAIN_FONT_SIZE);
+		for (int y = 0; y < BOARD_SIZE; y++) for (int x = 0; x < BOARD_SIZE; x++) {
+			int gain = rbPutPiece(state, x, y, turn, false);
+			if (gain) {
+				int cx = x * CELL_PX + BOARD_ORIGIN_X + CELL_PX / 2;
+				int cy = y * CELL_PX + BOARD_ORIGIN_Y + CELL_PX / 2;
+				//桁数によらず中央配置するため、実描画幅を取得して半分ずらす
+				int textW = GetDrawFormatStringWidth("%d", gain);
+				DrawFormatString(cx - textW / 2, cy - HINT_GAIN_FONT_SIZE / 2, ColorWhite, "%d", gain);
+			}
 		}
-	}
 
-	//フォントサイズを呼び出し前の値に戻す (後続の rbDrawMsg/CountPanel/TurnIndicator に影響させない)
-	SetFontSize(oldFontSize);
+		//フォントサイズを呼び出し前の値に戻す (後続の rbDrawMsg/CountPanel/TurnIndicator に影響させない)
+		SetFontSize(oldFontSize);
+	}
 }

@@ -20,6 +20,7 @@ typedef enum _SCENE_NO {
 	SCENE_GAME2,		// まきもどり次元（2 ラウンド制）
 	SCENE_GAME3,		// あまちゃん次元（名前入力 → Game2 へ遷移）
 	SCENE_GAME4,		// 空シーン雛形（新シーン追加時のコピー元、menu[] 非掲載）
+	SCENE_OPTIONS,		// オプション設定画面（1.5.7 で導入、Game3 のトグル設定）
 	SCENE_MAX			// シーン番号の上限。必ず書く
 } SCENE_NO;
 
@@ -44,6 +45,18 @@ typedef enum _GAME_ROUND {
 	GAME_ROUND_FIRST = 1,		//第 1 ラウンド
 	GAME_ROUND_SECOND = 2		//第 2 ラウンド (ラウンド間に removePiece で 96 マス削除)
 } GAME_ROUND;
+
+//Game3 (あまちゃん) のオプション設定 (1.5.7 で導入、settings.ini で永続化)
+//4 トグル: ヒント表示 / 取得コマ数表示 / 弱い CPU / 待った機能。デフォルトはすべて true (現状の Game3 動作と一致)
+typedef struct _ReversiOptions {
+	bool showHints;		//置けるマスのオレンジ丸ハイライト
+	bool showGain;		//ヒント丸内の取得コマ数表示 (showHints=true 時のみ意味あり)
+	bool weakCpu;		//true=rbThinkRandom (弱) / false=rbThinkCpu (貪欲、強)
+	bool allowUndo;		//R キーでの 1 手戻し
+} ReversiOptions;
+
+//Game3 オプション設定のグローバル状態 (定義は GameMain.cpp、起動時に settings.ini から読込)
+extern ReversiOptions g_game3Options;
 
 //盤面状態をまとめた構造体 (Game1Scene/Game2Scene 共有、TwistTimeStopper TIMER_STATE と同方式)
 //静的初期化でゼロクリアされ、rbInit() で初期 4 駒配置 + メッセージリセットされる。
@@ -108,7 +121,8 @@ void rbDrawTurnIndicator(int turn);
 
 //置ける場所を半透明丸でハイライト (Game3 あまちゃん用、初心者向けヒント表示)
 //プレイヤー手番中のみ呼び出す想定 (CPU 手番中は混乱を招くため非表示推奨)
-void rbDrawHints(ReversiBoard* state, int turn);
+//showGain=true でヒント丸の中に取得コマ数を白で重ね描き、false ならオレンジ丸のみ (1.5.7 でトグル化)
+void rbDrawHints(ReversiBoard* state, int turn, bool showGain);
 
 //シーンを変更する関数
 void changeScene(SCENE_NO no);

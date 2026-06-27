@@ -1,6 +1,6 @@
 ﻿# CLAUDE.md — ReversedReversi プロジェクト情報
 
-Visual Studio (MSVC) + DxLib による C++ リバーシゲーム。本体は [Project2.sln](Project2.sln) / [Project2/](Project2/) 配下。タイトルバー表記は「Reverse Reversi 1.5.6.1」、メニュー描画は「まきもどリバーシ Ver 1.5.6.1」([Project2/MenuScene.cpp:66](Project2/MenuScene.cpp#L66))。日本語 Windows 環境 (コードページ 932) でビルドする前提。バージョン履歴は [CHANGELOG.md](CHANGELOG.md)、ライセンスは [LICENSE.md](LICENSE.md) (MIT)、公開向け案内は [README.md](README.md) を参照 (採番ルール: フェーズ MINOR + サブターゲット PATCH + **挙動不変なコード変更は SUBPATCH** (4 セグメント、1.5.6.1 で導入)、ドキュメント/メタファイルのみの変更は据え置き — CHANGELOG 冒頭参照)。
+Visual Studio (MSVC) + DxLib による C++ リバーシゲーム。本体は [Project2.sln](Project2.sln) / [Project2/](Project2/) 配下。タイトルバー表記は「Reverse Reversi 1.5.7」、メニュー描画は「まきもどリバーシ Ver 1.5.7」([Project2/MenuScene.cpp:66](Project2/MenuScene.cpp#L66))。日本語 Windows 環境 (コードページ 932) でビルドする前提。バージョン履歴は [CHANGELOG.md](CHANGELOG.md)、ライセンスは [LICENSE.md](LICENSE.md) (MIT)、公開向け案内は [README.md](README.md) を参照 (採番ルール: フェーズ MINOR + サブターゲット PATCH + **挙動不変なコード変更は SUBPATCH** (4 セグメント、1.5.6.1 で導入)、ドキュメント/メタファイルのみの変更は据え置き — CHANGELOG 冒頭参照)。
 
 姉妹プロジェクトに [TwistTimeStopper](d:\Repositories\TwistTimeStopper) があり、シーン管理の雛形を共有している (元は同じ「Scene管理付き空プロジェクトRev2」テンプレート)。TwistTimeStopper は既に α/β/γ/δ のリファクタを完走しており、共通基盤化のリファレンスとして本ファイル中で頻繁に参照する。
 
@@ -153,6 +153,7 @@ typedef enum _SCENE_NO {
     SCENE_GAME2,        // まきもどり次元 (完成、2 ラウンド制)
     SCENE_GAME3,        // あまちゃん次元 (未完成、名前入力のみ)
     SCENE_GAME4,        // 空シーン雛形 (menu[] 非掲載、新シーン追加時のコピー元)
+    SCENE_OPTIONS,      // オプション設定画面 (1.5.7 で導入、Game3 のトグル設定)
     SCENE_MAX           // 上限センチネル
 } SCENE_NO;
 ```
@@ -404,7 +405,7 @@ default: break;  // ← 追加
 
 - **`SCENE_GAME1` (ふつうの次元)** — 12×12 リバーシ本体、プレイヤー (黒、`rbThinkPlayer`) vs CPU (白、`rbThinkCpu`)、勝敗判定まで実装。γ-1 (2026-06-25) でフレーム駆動化 + シーン再入場リセット + X キーメニュー復帰実装済
 - **`SCENE_GAME2` (まきもどり次元、旧 SCENE_GAME4)** — Game1 の拡張版、2 ラウンド制 (`CurrentRound`)、ラウンド間で `rbRemovePieces(&state, 96)` で 96 マス削除、BGM 切替 (`changeBGM`)。γ-1 でフレーム駆動化 + ラウンド遷移 240 フレームカウンタ化 + 終了メッセージフリッカー解消 + ラウンド 2 終了時の X キーメニュー復帰 + `releaseGame2Scene` の `DxLib_End` 直呼び撤去 (γ-2 副次解消) 完了
-- **`SCENE_GAME3` (あまちゃん次元、旧 SCENE_GAME5)** — γ-3 (2026-06-26) で独自モード化完了。内部 2 フェーズ構造 (`GAME3_PHASE_NAME_ENTRY` → `GAME3_PHASE_PLAYING`)。名前入力は `KeyInputSingleCharString` + Enter キー検出で確定 (元の 1 文字入力即遷移バグ解消)。対局は Game1 と同じ盤面ロジック + 思考テーブル `{ rbThinkPlayer, rbThinkRandom }` で**弱い CPU** (置ける場所からランダム選択) を採用、初心者でも勝てる難易度。対局画面の右パネルに `PLAYER:` として `nameTmp` を表示。後続セッション (2026-06-26) で **ヒント表示** (`rbDrawHints`、置けるマスにオレンジ半透明丸、プレイヤー手番中のみ) + さらに後続 (2026-06-26) で **ヒントマスへの取得コマ数表示** (オレンジ円の中心に白で裏返り枚数を中央寄せ表示、`HINT_GAIN_FONT_SIZE=20`) を追加。1.5.6 (2026-06-26) で **「待った」機能** (R キー、`prevState`/`prevStatus`/`prevTurn`/`undoAvailable` static で前手スナップショット保持、CPU 応手も含めた巻き戻し、FINISHED 中は無効、`undoAvailable && status != FINISHED` 時のみ「R: 待った」ガイド表示) を追加
+- **`SCENE_GAME3` (あまちゃん次元、旧 SCENE_GAME5)** — γ-3 (2026-06-26) で独自モード化完了。内部 2 フェーズ構造 (`GAME3_PHASE_NAME_ENTRY` → `GAME3_PHASE_PLAYING`)。名前入力は `KeyInputSingleCharString` + Enter キー検出で確定 (元の 1 文字入力即遷移バグ解消)。対局は Game1 と同じ盤面ロジック + 思考テーブル `{ rbThinkPlayer, rbThinkRandom }` で**弱い CPU** (置ける場所からランダム選択) を採用、初心者でも勝てる難易度。対局画面の右パネルに `PLAYER:` として `nameTmp` を表示。後続セッション (2026-06-26) で **ヒント表示** (`rbDrawHints`、置けるマスにオレンジ半透明丸、プレイヤー手番中のみ) + さらに後続 (2026-06-26) で **ヒントマスへの取得コマ数表示** (オレンジ円の中心に白で裏返り枚数を中央寄せ表示、`HINT_GAIN_FONT_SIZE=20`) を追加。1.5.6 (2026-06-26) で **「待った」機能** (R キー、`prevState`/`prevStatus`/`prevTurn`/`undoAvailable` static で前手スナップショット保持、CPU 応手も含めた巻き戻し、FINISHED 中は無効、`undoAvailable && status != FINISHED` 時のみ「R: 待った」ガイド表示) を追加。1.5.7 (2026-06-26) で **オプション設定のトグル化** (`SCENE_OPTIONS` 新設、ヒント / 取得コマ数 / 弱い CPU / 待った の 4 トグルを `g_game3Options` で管理、`settings.ini` 永続化) を追加
 
 ### 未完成 (要対応)
 
@@ -412,16 +413,15 @@ default: break;  // ← 追加
 
 ### 将来実装予定 (Game3 あまちゃん次元の拡張)
 
-γ-3 + 後続 (2026-06-26) で「弱い CPU + ヒント表示 + 取得コマ数表示 + 待った機能」を実装済。以下は未着手の追加候補:
+γ-3 + 後続 (2026-06-26) + 1.5.7 で「弱い CPU + ヒント表示 + 取得コマ数表示 + 待った機能 + オプション設定 (Game3 専用、`SCENE_OPTIONS` 経由で 4 トグル ON/OFF、`settings.ini` 永続化)」を実装済。以下は未着手の追加候補:
 
-1. **オプション設定のトグル化** — 「ヒント表示」「取得コマ数表示」「CPU 強弱 (`rbThinkRandom` ↔ `rbThinkCpu`)」「待った機能の有効/無効」を実行時に切り替え可能にする。Game3 (あまちゃん) はデフォルト全部 ON / 強さ弱、Game1 (ふつう) はデフォルト全部 OFF / 強さ強 が想定。実装規模: 中 — 設定構造体 (`typedef struct _ReversiOptions { bool showHints; bool showGain; bool weakCpu; bool allowUndo; }` 等) を [GameSceneMain.h](Project2/GameSceneMain.h) に追加してシーン側 static 保持、`renderXxxScene` のヒント/数字呼び出しを `if (opt.showHints)` でガード、`think[]` 選択を `opt.weakCpu` で分岐。UI は (a) メニューに「OPTIONS」シーンを追加するか、(b) ゲーム内でトグルキー (H=ヒント, G=取得数, U=待った 等) を割り当てるかの 2 案。要設計検討
-2. (任意) **盤面サイズ縮小モード** — 12×12 → 8×8 など。簡単な対局向け。実装規模: 大 (盤面サイズを定数固定から動的化、`rbInit` 拡張、`rbDraw*` 関数群のパラメータ化が必要)
+1. (任意) **盤面サイズ縮小モード** — 12×12 → 8×8 など。簡単な対局向け。実装規模: 大 (盤面サイズを定数固定から動的化、`rbInit` 拡張、`rbDraw*` 関数群のパラメータ化が必要)
 
 ### 将来予定 (プロジェクト全体の拡張)
 
 Game3 専用ではなく、ふつう/まきもどり/あまちゃんを横断するシステム機能:
 
-1. **プレイヤーランクシステム** — プレイの技巧 (勝敗、取得コマ差、無パス継続、勝った相手の強さ等) に応じて経験値を蓄積、目標値到達でランクアップ。ランク階層案 (英語表記): `NOVICE → APPRENTICE → ADEPT → EXPERT → MASTER → GRAND MASTER` または将棋風 (`級位 → 段位`)。**プレイヤー名 (Game3 の `nameTmp`) はあくまでハンドルネーム**、ランクは別軸の称号として右パネル `PLAYER:` 行と並べて表示する案。実装規模: 大 — 永続化が必須 (`save.dat` 等のバイナリ/INI/JSON、`GameMain` 起動時に読込・終了時に書込)、XP 計算ロジック (`int calcXpGain(int winnerColor, int gain, int passes, ...)` 等)、ランク閾値テーブル、ランクアップ演出、メニュー表示への反映 (タイトル横にランク章を出す等)。要設計検討事項多数 (各モード別に XP 倍率を変えるか / 取り戻しなしモードのみ XP 計上にするか / リセット手段 / モデレーション)
+1. **プレイヤーランクシステム** — プレイの技巧 (勝敗、取得コマ差、無パス継続、勝った相手の強さ等) に応じて経験値を蓄積、目標値到達でランクアップ。ランク階層案 (英語表記): `NOVICE → APPRENTICE → ADEPT → EXPERT → MASTER → GRAND MASTER` または将棋風 (`級位 → 段位`)。**プレイヤー名 (Game3 の `nameTmp`) はあくまでハンドルネーム**、ランクは別軸の称号として右パネル `PLAYER:` 行と並べて表示する案。実装規模: 大 — 永続化が必須 (`save.dat` 等のバイナリ/INI/JSON、または既存 `settings.ini` の拡張、`GameMain` 起動時に読込・終了時に書込)、XP 計算ロジック (`int calcXpGain(int winnerColor, int gain, int passes, ...)` 等)、ランク閾値テーブル、ランクアップ演出、メニュー表示への反映 (タイトル横にランク章を出す等)。要設計検討事項多数 (各モード別に XP 倍率を変えるか / 取り戻しなしモードのみ XP 計上にするか / リセット手段 / モデレーション)
 2. **カラーパレット増設 (継続的)** — 1.5.6.1 (2026-06-26) で初期 7 色 (`ColorBronze`/`Silver`/`Gold`/`Platinum`/`Warn`/`Overlay`/`Hover`) を `ColorXxx` 命名で extern 追加済 ([CHANGELOG.md](CHANGELOG.md) [1.5.6.1] 参照)。本リリースでは未参照、B1/B2/テーマ化等の将来機能で使用される伏線。**継続的タスク** として残置: 今後の機能拡張で新色が必要になり次第、同じ `ColorXxx` 命名で [GameMain.cpp](Project2/GameMain.cpp) 定義 + [GameMain.h](Project2/GameMain.h) extern 追加を継続。1 色追加ごとに SUBPATCH バンプ (1.5.6.1 → 1.5.6.2 → ...)、機能と同時追加の場合は機能側 PATCH バンプに巻き込み。**未対応**: 既存インライン `GetColor()` 呼び出し (盤面色 `(0,100,20)` / `(0,140,20)`、メッセージ箱グレー `(150,150,150)`、ヒントオレンジ `(255,165,0)`、MenuScene/Game4Scene の白赤リテラル) の extern 化 — 別タスクで一括対応する場合 `BoardColorDark/Light` `MsgBoxBg` `ColorHintOrange` 等の命名統一を要設計検討
 
 ### 将来予定 (リポジトリ整備)
@@ -757,6 +757,31 @@ DxLib パスを `.props` に集約 + x64 ターゲット追加で 4 構成対応
 - **新関数 `rbDrawHints` を [GameSceneMain.cpp](Project2/GameSceneMain.cpp) に追加**: 全マスを `rbPutPiece(..., put_flag=false)` でシミュレーションして置けるマスを判定、`SetDrawBlendMode(DX_BLENDMODE_ALPHA, 128)` (50% 半透明) に切替えてマス中央に `DrawCircle` でオレンジ (`GetColor(255, 165, 0)`、関数冒頭で 1 度キャッシュ) 塗り潰し丸 (半径 = `CELL_PX / 3`) を描画。最後に `SetDrawBlendMode(DX_BLENDMODE_NOBLEND, 0)` で元に戻す (以降の描画に影響しないように必須)。色選定: 既存 `ColorSky` 流用案から再検討し、黒コマ/白コマ/暗緑盤面のいずれとも混同しにくく既存 `← Now` 矢印 (`ColorSky`) と区別される暖色を選択
 - **Game3 renderGame3Scene PLAYING フェーズで条件付き呼び出し**: `status == GAME_STATUS_PLAYING && turn == GAME_TURN_BLACK` 時のみ。TURN_MSG/PASS_MSG/FINISHED 中や CPU 手番中は混乱を招くため非表示
 - **Game1/Game2 では非表示**: ヒント表示は Game3 (あまちゃん) の差別化要素。Game1 (ふつう) / Game2 (まきもどり) は従来通りヒントなしで難易度を維持
+- **検証**: 全 4 構成リビルド (Debug|Win32 / Release|Win32 / Debug|x64 / Release|x64) いずれも警告 0 / エラー 0
+
+### B1 オプション設定のトグル化 (完了, 2026-06-26, 1.5.7)
+
+§10 将来予定 (Game3 拡張) の「オプション設定のトグル化」を実装。Game3 (あまちゃん) 専用の 4 トグル UI + settings.ini 永続化。プランモードでユーザー承認を得てから着手。
+
+- **新規シーン `SCENE_OPTIONS`** ([Project2/GameSceneMain.h](Project2/GameSceneMain.h) enum 追加、[GameSceneMain.cpp](Project2/GameSceneMain.cpp) sceneTable[] に 1 行追加。新規シーン追加手順は β-D-1 で確立した「(1) enum + (2) sceneTable」のみで完結)
+- **新規ファイル** ([Project2/OptionsScene.h](Project2/OptionsScene.h) / [OptionsScene.cpp](Project2/OptionsScene.cpp)) — 5 関数 (init/move/render/release/CollideCallback)。`OPTION_COUNT = 4`、`static int selected` でカーソル管理、↑↓ で選択、Enter/Space でトグル反転 + `saveOptions()` 即呼出、X でメニュー復帰
+- **新規構造体 `ReversiOptions`** ([GameSceneMain.h](Project2/GameSceneMain.h)) — `bool showHints/showGain/weakCpu/allowUndo` の 4 メンバ。デフォルトは全 true で現状の Game3 動作と完全一致
+- **グローバル `g_game3Options`** ([GameMain.cpp](Project2/GameMain.cpp) 定義 + [GameSceneMain.h](Project2/GameSceneMain.h) extern) — `ReversiOptions g_game3Options = { true, true, true, true };`
+- **永続化** ([GameMain.cpp](Project2/GameMain.cpp)): `loadOptions()` / `saveOptions()` 関数追加。`fopen_s` + `sscanf_s` でセキュア、`settings.ini` (key=value テキスト形式) を起動時に読込、トグル変更ごとに書込。ファイル無し/不正値はデフォルト維持で安全
+- **WinMain で `loadOptions()` を呼出** — `InitGame()` 直後の 1 回のみ ([GameMain.cpp](Project2/GameMain.cpp))
+- **`rbDrawHints` シグネチャ拡張** ([GameSceneMain.h/.cpp](Project2/GameSceneMain.cpp)): `void rbDrawHints(ReversiBoard*, int turn, bool showGain)` に変更。Pass 2 (取得コマ数の数字描画) を `if (showGain)` でガード、フォントサイズ退避/復元も条件付き
+- **Game3Scene 内 4 箇所のトグル参照** ([Game3Scene.cpp](Project2/Game3Scene.cpp)):
+  - R キー判定: `g_game3Options.allowUndo && ...` (FINISHED ガードと AND)
+  - 思考テーブル: `{ rbThinkPlayer, g_game3Options.weakCpu ? rbThinkRandom : rbThinkCpu }`
+  - スナップショット persist: `if (g_game3Options.allowUndo && isPlayerTurn) ...`
+  - ヒント描画呼出: `if (g_game3Options.showHints && ...) rbDrawHints(&state, turn, g_game3Options.showGain);`
+  - 「R: 待った」ガイド: `g_game3Options.allowUndo && undoAvailable && status != FINISHED`
+- **MenuScene 拡張** ([MenuScene.cpp](Project2/MenuScene.cpp)): `MENU_MAX` 3 → 4、`menu[]` / `menuList[]` に `SCENE_OPTIONS` / "オプション設定" 追加
+- **Project2.vcxproj / .filters 更新**: `OptionsScene.cpp` / `OptionsScene.h` を ClCompile/ClInclude に追加、フィルタは「ソース ファイル\Scene」「ヘッダー ファイル\Scene」配下
+- **スコープは Game3 のみ**: Game1 (ふつう) / Game2 (まきもどり) は据え置き、Game3 専用 `g_game3Options` を参照しない
+- **デフォルト全 ON は現状の Game3 動作と一致**: settings.ini を作らず起動しても挙動同じ
+- **`showGain && !showHints`**: UI 上は独立トグルだが描画コードで showHints が外側ガードなので showGain も実質無効 (将来 OPTIONS UI で依存関係を明示する余地あり)
+- **版数**: 機能追加 (挙動変化あり) なので PATCH バンプ 1.5.6.1 → 1.5.7 ([GameMain.cpp:53](Project2/GameMain.cpp#L53) タイトル + [MenuScene.cpp:66](Project2/MenuScene.cpp#L66) メニュー)
 - **検証**: 全 4 構成リビルド (Debug|Win32 / Release|Win32 / Debug|x64 / Release|x64) いずれも警告 0 / エラー 0
 
 ### B3 カラーパレット増設 初期 7 色 (完了, 2026-06-26, 1.5.6.1)

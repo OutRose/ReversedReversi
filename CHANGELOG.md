@@ -14,6 +14,41 @@
 
 ---
 
+## [1.5.7] - 2026-06-26
+
+### Added
+
+- **B1: オプション設定のトグル化 (Game3 専用)** — メニューに「OPTIONS」項目を追加、`SCENE_OPTIONS` 新設で 4 つのトグルを ON/OFF 可能に
+  - 新規シーン `SCENE_OPTIONS` ([Project2/GameSceneMain.h](Project2/GameSceneMain.h) enum 追加、[GameSceneMain.cpp](Project2/GameSceneMain.cpp) sceneTable[] 拡張)
+  - 新規ファイル [OptionsScene.h](Project2/OptionsScene.h) / [OptionsScene.cpp](Project2/OptionsScene.cpp) — 5 関数 (init/move/render/release/CollideCallback)、カーソル移動 + トグル反転 + メニュー復帰
+  - 4 トグル: **ヒント表示** (`showHints`) / **取得コマ数表示** (`showGain`) / **弱い CPU** (`weakCpu`、true=`rbThinkRandom` / false=`rbThinkCpu`) / **待った機能** (`allowUndo`)
+  - 新規構造体 `ReversiOptions` ([GameSceneMain.h](Project2/GameSceneMain.h))、グローバル `g_game3Options` (デフォルト全 true で現状動作と一致)
+- **`settings.ini` ファイル永続化** — 4 トグル状態をテキスト形式で保存、次回起動でも保持
+  - 新規関数 `loadOptions()` / `saveOptions()` ([GameMain.cpp](Project2/GameMain.cpp))。`fopen_s` + `sscanf_s` でセキュア、ファイル無し/不正値時はデフォルト維持
+  - `loadOptions` は `WinMain` で `InitGame()` 直後に 1 回呼出、`saveOptions` は OPTIONS シーンでトグル変更ごとに呼出
+- メニュー項目: `MENU_MAX` 3 → 4、`menu[]` / `menuList[]` に「オプション設定」追加 ([MenuScene.cpp](Project2/MenuScene.cpp))
+- Project2.vcxproj / .filters に `OptionsScene.cpp` / `OptionsScene.h` を追加
+
+### Changed
+
+- `rbDrawHints` シグネチャに `bool showGain` パラメータを追加 — false なら Pass 2 (取得コマ数の数字描画) をスキップ、フォントサイズ退避/復元も条件付き ([GameSceneMain.h](Project2/GameSceneMain.h) / [GameSceneMain.cpp](Project2/GameSceneMain.cpp))
+- Game3Scene の 4 箇所に `g_game3Options` 参照を埋込 ([Game3Scene.cpp](Project2/Game3Scene.cpp)):
+  - moveGame3Scene の R キー判定: `g_game3Options.allowUndo && ...`
+  - moveGame3Scene の思考テーブル: `{ rbThinkPlayer, g_game3Options.weakCpu ? rbThinkRandom : rbThinkCpu }`
+  - moveGame3Scene のスナップショット persist: `if (g_game3Options.allowUndo && isPlayerTurn) ...`
+  - renderGame3Scene のヒント描画: `if (g_game3Options.showHints && ...) rbDrawHints(&state, turn, g_game3Options.showGain);`
+  - renderGame3Scene の「R: 待った」ガイド: `g_game3Options.allowUndo && undoAvailable && ...`
+- ウィンドウタイトル `Reverse Reversi 1.5.6.1` → `Reverse Reversi 1.5.7` ([GameMain.cpp](Project2/GameMain.cpp))
+- メニュー版数表示 `まきもどリバーシ Ver 1.5.6.1` → `Ver 1.5.7` ([MenuScene.cpp](Project2/MenuScene.cpp))
+
+### Notes
+
+- スコープは **Game3 (あまちゃん) 限定** — Game1=ふつう / Game2=まきもどり は据え置き、難易度維持と差別化を兼ねる
+- デフォルト全 ON は **現状の Game3 動作と完全一致**、settings.ini を作らず起動しても挙動同じ
+- `showGain=true` だが `showHints=false` の組合せは UI では許可 (独立トグル)、描画コードでは showHints が外側ガードなので showGain も実質無効
+
+---
+
 ## [1.5.6.1] - 2026-06-26
 
 **SUBPATCH リリース** — コードのみの変更で挙動は完全に不変 (新規 extern 色定数の追加のみ、本リリースでは未使用)。
@@ -384,6 +419,7 @@
 
 ---
 
+[1.5.7]: https://github.com/OutRose/ReversedReversi/releases/tag/v1.5.7
 [1.5.6.1]: https://github.com/OutRose/ReversedReversi/releases/tag/v1.5.6.1
 [1.5.6]: https://github.com/OutRose/ReversedReversi/releases/tag/v1.5.6
 [1.5.5]: https://github.com/OutRose/ReversedReversi/releases/tag/v1.5.5

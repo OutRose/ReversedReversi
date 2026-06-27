@@ -31,6 +31,12 @@ extern unsigned int ColorBronze, ColorSilver, ColorGold, ColorPlatinum;
 //汎用 UI 用 (1.5.6.1 で追加、B1 オプショントグル + テーマ化伏線)
 extern unsigned int ColorWarn, ColorOverlay, ColorHover;
 
+//オプション設定の永続化 (1.5.7 で導入、Game3 専用)
+//loadOptions: WinMain で InitGame() 直後に 1 回呼ぶ、settings.ini からの読込み
+//saveOptions: OptionsScene でトグル変更ごとに呼ぶ、settings.ini への書込み
+void loadOptions(void);
+void saveOptions(void);
+
 //画面設定 (WinMain で SetGraphMode に渡す)
 #define SCREEN_WIDTH  800
 #define SCREEN_HEIGHT 700
