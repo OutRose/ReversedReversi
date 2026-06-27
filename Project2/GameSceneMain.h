@@ -21,6 +21,7 @@ typedef enum _SCENE_NO {
 	SCENE_GAME3,		// あまちゃん次元（名前入力 → Game2 へ遷移）
 	SCENE_TEMPLATE,		// 空シーン雛形（新シーン追加時のコピー元、menu[] 非掲載。1.5.8 で旧 SCENE_GAME4 から固定名に改名）
 	SCENE_OPTIONS,		// オプション設定画面（1.5.7 で導入、Game3 のトグル設定）
+	SCENE_BOARD_SIZE,	// 盤面サイズ設定画面（1.6.1 で導入、OPTIONS から遷移、項目 6(a)）
 	SCENE_MAX			// シーン番号の上限。必ず書く
 } SCENE_NO;
 
@@ -185,5 +186,27 @@ const char* getTierName(int tier);
 
 //ティア色取得 (tier=0..TIER_COUNT-1、範囲外なら ColorWhite を返す)
 unsigned int getTierColor(int tier);
+
+//=========================================================================
+//対局中断機能関連 (1.6.1 で追加、項目 4)
+//=========================================================================
+
+//X キーのエッジ検出 (前フレーム非押下 → 今フレーム押下) 共通ヘルパ (1.6.1 polish で追加)
+//関数内 static `prevX` で前フレーム状態を保持、シーン間を跨いでも正しくエッジ検出される
+//シーン遷移はフレーム末尾に行われるため、新シーンの最初の move/render で curX=1 / prevX=1 → false で連鎖を防ぐ
+//対象連鎖: BoardSize→OPTIONS→MENU の HIGH、RANK_UP/DEMOTED の X スキップ→FINISHED→MENU の HIGH (1.6.0 から残存)
+//tryAbortMidGame の prevQ 設計と同方式、Q キーと同じ整合性で X キー連鎖も解消
+bool isXKeyJustPressed(void);
+
+//対局中の Q キー 2 段階確認 (中断確定で true → 呼出側で changeScene(SCENE_MENU)、XP 計上なし)
+//active=true はミッドゲーム中 (Q 押下で確認モード入り) を表す、false の間は abortConfirmTimer を強制 0 クリア
+//1 回目 Q → *abortConfirmTimer=180 (3 秒)、2 回目 Q (180f 以内) → 戻り値 true。タイマー減衰は本関数内で実施
+//Q のエッジ検出は関数内 static で行う (同フレームに複数 Game シーンが active になることはない)
+bool tryAbortMidGame(int* abortConfirmTimer, bool active);
+
+//中断ガイドと確認オーバーレイの描画 (active=true 時のみ右パネルに「Q: 中断」、タイマー>0 で中央オーバーレイ)
+//abortConfirmTimer が 0 のときは active=true でも右パネルガイドのみ、>0 で中央オーバーレイ追加
+//guideY: 「Q: 中断」ガイドの Y 座標 (デフォルト 420)。Game2 ラウンド 1 FINISHED 時のみ Y=350 で finish msg との被りを回避
+void rbDrawAbortGuide(int abortConfirmTimer, bool active, int guideY = 420);
 
 #endif

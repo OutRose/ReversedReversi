@@ -1,7 +1,7 @@
 ﻿#include "GameSceneMain.h"
 #include <assert.h>		//changeScene 範囲外チェックのアサート用 (Debug ビルドでのみ発火)
 #include <stdlib.h>		//rb* 関数で GetRand と組み合わせ + 将来の汎用ユーティリティ用
-#include <math.h>		//1.6.0 ランクアップ演出の sinf/cosf (回転アニメ) 用、cmath ではなく C 互換ヘッダで統一
+#include <math.h>		//1.6.0 ランクアップ演出の sinf/cosf 用 (1.6.1 で揺れ動き撤去により本リリースでは未参照、将来の演出強化用に保持)
 #include <string.h>		//1.6.0 ランク演出で strlen (ティア名長取得) 用
 
 //全てのシーンのヘッダファイルをインクルードする
@@ -11,6 +11,7 @@
 #include "GameSceneTemplate.h"	//1.5.8 で旧 Game4Scene.h からリネーム (固定名の空シーン雛形)
 #include "MenuScene.h"
 #include "OptionsScene.h"	//1.5.7 で導入
+#include "BoardSizeScene.h"	//1.6.1 で導入 (盤面サイズ設定、OPTIONS から遷移)
 
 //このファイル内だけで使用する関数のプロトタイプ宣言
 //現在のシーンの初期化処理 (BOOL: 成功 TRUE / 失敗 FALSE、FrameMove 内のフォールバック判定で参照)
@@ -44,6 +45,7 @@ static const SCENE_HANDLERS sceneTable[SCENE_MAX] = {
 	/* [SCENE_GAME3] */ { initGame3Scene, moveGame3Scene, renderGame3Scene, releaseGame3Scene, Game3SceneCollideCallback },
 	/* [SCENE_TEMPLATE] */ { initGameSceneTemplate, moveGameSceneTemplate, renderGameSceneTemplate, releaseGameSceneTemplate, GameSceneTemplateCollideCallback },
 	/* [SCENE_OPTIONS] */ { initOptionsScene, moveOptionsScene, renderOptionsScene, releaseOptionsScene, OptionsSceneCollideCallback },
+	/* [SCENE_BOARD_SIZE] */ { initBoardSizeScene, moveBoardSizeScene, renderBoardSizeScene, releaseBoardSizeScene, BoardSizeSceneCollideCallback },
 };
 
 //sceneNo が sceneTable の有効インデックス範囲内か判定するヘルパ
@@ -103,6 +105,11 @@ void GameRelease(void) {
 	//現在のシーンの削除処理
 	releaseCurrentScene();
 	// 全てのシーンで共有するモノの削除処理をする
+	//1.6.1: ランクアップ SE 専用ハンドル解放 (LoadSoundMem で確保した分、ロード失敗時は -1 で skip)
+	if (g_rankUpSeHandle != -1) {
+		DeleteSoundMem(g_rankUpSeHandle);
+		g_rankUpSeHandle = -1;
+	}
 }
 
 //３(2) 当り判定コールバック 　　　ここでは要素を削除しないこと！！
@@ -668,7 +675,9 @@ void rbDrawRankUpAnimation(int frame, int oldTier, int newTier)
 	DrawBox(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, ColorOverlay, TRUE);
 	SetDrawBlendMode(DX_BLENDMODE_NOBLEND, 0);
 
-	//段階 2: 30-90f ランク章を半径 10→120 でスケールアップ + 360° 回転 (中心 640, 384)
+	//段階 2: 30-90f ランク章を半径 10→120 でスケールアップ (中心 640, 384 固定)
+	//1.6.1 polish: 旧実装で sinf/cosf による半径 8px の小円軌道オフセットを加えていたが、
+	//円は回転対称なので「中心が揺れ動く」失敗演出になっていた。中心固定でスケールのみの方がスケール感が際立つ
 	if (frame >= 30) {
 		int phase2Frame = frame - 30;
 		int radius;
@@ -678,12 +687,8 @@ void rbDrawRankUpAnimation(int frame, int oldTier, int newTier)
 		else {
 			radius = 120;	//以降固定
 		}
-		float angle = (phase2Frame * 6.28318f) / 60.0f;	//1 周/60f
-		//回転は装飾的に半径方向にずらして描画 (本格的なテクスチャ回転は不要)
-		int offsetX = (int)(cosf(angle) * 8);
-		int offsetY = (int)(sinf(angle) * 8);
-		DrawCircle(640 + offsetX, 384 + offsetY, radius, newColor, TRUE);
-		DrawCircle(640 + offsetX, 384 + offsetY, radius, ColorWhite, FALSE);
+		DrawCircle(640, 384, radius, newColor, TRUE);
+		DrawCircle(640, 384, radius, ColorWhite, FALSE);
 	}
 
 	//段階 3: 90-180f ティア名を 1 文字ずつフェードイン (フォント 80)
@@ -755,6 +760,113 @@ void rbDrawDemoteAnimation(int frame, int oldTier, int newTier)
 		int nameLen = (int)strlen(name);
 		int nameW = GetDrawStringWidth(name, nameLen);
 		DrawString(640 - nameW / 2, 530, name, newColor);
+	}
+
+	SetFontSize(oldFontSize);
+}
+
+//=========================================================================
+//X キーエッジ検出ヘルパ (1.6.1 polish で追加、シーン遷移時の押しっぱなし連鎖を防止)
+//=========================================================================
+
+//X キーが今フレームで新しく押されたかどうかを返す (前フレーム非押下 → 今フレーム押下)
+//関数内 static で前フレーム状態を保持、シーン間を跨いでも正しく動作する:
+//シーン遷移はフレーム末尾なので、新シーンの最初の move/render で curX=1 / prevX=1 → edge=false
+//これにより BoardSize→OPTIONS→MENU 連鎖と RANK_UP/DEMOTED スキップ→FINISHED→MENU 連鎖の両方を解消
+bool isXKeyJustPressed(void)
+{
+	static int prevX = 0;
+	int curX = CheckHitKey(KEY_INPUT_X);
+	bool edge = (curX == 1 && prevX == 0);
+	prevX = curX;
+	return edge;
+}
+
+//=========================================================================
+//対局中断機能 (1.6.1 で追加、項目 4: Q キー 2 段階確認、XP 計上なし)
+//=========================================================================
+
+//Q キーのエッジ検出 + 2 段階確認タイマー管理 (3 シーン共通)
+//active=true ならミッドゲーム中、false なら強制 0 クリア (FINISHED/RANK_UP 中などに残らない)
+//1 回目 Q → タイマー 180f (3 秒) セット、2 回目 Q → 戻り値 true (中断確定)
+bool tryAbortMidGame(int* abortConfirmTimer, bool active)
+{
+	//Q キーエッジ検出: 関数内 static で前フレーム状態を保持
+	//同フレームに複数 Game シーンが active になることはない (シーンディスパッチは 1 系統)
+	static int prevQ = 0;
+	int curQ = CheckHitKey(KEY_INPUT_Q);
+	bool qEdge = (curQ == 1 && prevQ == 0);
+	prevQ = curQ;
+
+	if (!active)
+	{
+		//非アクティブ時はタイマー強制リセット (誤って残らないように)
+		*abortConfirmTimer = 0;
+		return false;
+	}
+
+	//タイマー減衰 (3 秒 = 180f カウントダウン)
+	if (*abortConfirmTimer > 0) (*abortConfirmTimer)--;
+
+	if (qEdge)
+	{
+		if (*abortConfirmTimer > 0)
+		{
+			//2 回目 Q (180f 以内): 中断確定
+			*abortConfirmTimer = 0;
+			return true;
+		}
+		else
+		{
+			//1 回目 Q: 確認モード入り (180f 制限時間)
+			*abortConfirmTimer = 180;
+		}
+	}
+	return false;
+}
+
+//中断ガイドと確認オーバーレイの描画 (active=true 時のみ「Q: 中断」常時 + タイマー>0 で中央オーバーレイ)
+//guideY は Game2 ラウンド 1 FINISHED 時の finish msg (Y=410 から 3 行) との被り回避のため呼出側で 350 に上書き可能
+void rbDrawAbortGuide(int abortConfirmTimer, bool active, int guideY)
+{
+	if (!active) return;	//非アクティブ時は何も描画しない
+
+	int oldFontSize = GetFontSize();
+
+	//常時ガイド「Q: 中断」(右パネル下部、フォント 28 で控えめに)
+	//デフォルト Y=420 は Game1/2/3 共通の空き領域 (Game3 R:待った Y=350+40=390 から 30px 下、ランク章 Y=480 から 32px 上)
+	//Game2 ラウンド 1 FINISHED 時のみ Y=350 に切替 (Round 表示 Y=240+40=280 と finish msg Y=410 の間に収める)
+	SetFontSize(28);
+	DrawString(PANEL_X, guideY, "Q: 中断", ColorSky);
+
+	//確認モード中の中央オーバーレイ (1 回目 Q 押下後の 3 秒間)
+	if (abortConfirmTimer > 0)
+	{
+		//半透明黒背景の枠 (rbDrawResultOverlay と同方式、盤面エリア内 X=100..630, Y=310..460)
+		const int boxX1 = 100, boxY1 = 310, boxX2 = 630, boxY2 = 460;
+		SetDrawBlendMode(DX_BLENDMODE_ALPHA, 200);
+		DrawBox(boxX1, boxY1, boxX2, boxY2, GetColor(20, 20, 20), TRUE);
+		SetDrawBlendMode(DX_BLENDMODE_NOBLEND, 0);
+		DrawBox(boxX1, boxY1, boxX2, boxY2, ColorWarn, FALSE);
+
+		const int centerX = (boxX1 + boxX2) / 2;	//= 365、盤面中心と一致
+
+		//「中断しますか?」フォント 48 ColorWarn (中央寄せ)
+		SetFontSize(48);
+		const char* q = "中断しますか?";
+		int qW = GetDrawStringWidth(q, (int)strlen(q));
+		DrawString(centerX - qW / 2, boxY1 + 15, q, ColorWarn);
+
+		//「もう一度 Q で確定」フォント 28 (中央寄せ、白)
+		SetFontSize(28);
+		const char* g1 = "もう一度 Q で確定";
+		int g1W = GetDrawStringWidth(g1, (int)strlen(g1));
+		DrawString(centerX - g1W / 2, boxY1 + 80, g1, ColorWhite);
+
+		//「他のキーで自動キャンセル」フォント 28 (中央寄せ、白)
+		const char* g2 = "(他のキーで自動キャンセル)";
+		int g2W = GetDrawStringWidth(g2, (int)strlen(g2));
+		DrawString(centerX - g2W / 2, boxY1 + 110, g2, ColorWhite);
 	}
 
 	SetFontSize(oldFontSize);

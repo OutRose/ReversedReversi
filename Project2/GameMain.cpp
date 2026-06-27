@@ -56,6 +56,11 @@ ReversiOptions g_game3Options = { true, true, true, true, 12 };
 //初期値: NOVICE / XP 0 / 0 試合 / 0 勝、settings.ini に新 4 キーが無ければこの値で起動 (後方互換)
 PlayerStats g_playerStats = { 0, 0, 0, 0 };
 
+//ランクアップ SE 専用ハンドル (1.6.1 で導入、初期値 -1 = 未ロード)
+//WinMain で LoadSoundMem 経由でロード、GameRelease で DeleteSoundMem で解放
+//BGM (PlaySoundFile) と別チャンネルで PlaySoundMem 再生し、BGM の冒頭再開始問題を解消
+int g_rankUpSeHandle = -1;
+
 //ティアテーブル (10 段、1.6.0 で導入)
 //名前は冒険感のある英語 NOVICE → ETERNAL の 10 段、Game3 のプレイヤー名 nameTmp とは独立した実力称号
 const char* TIER_NAMES[TIER_COUNT] = {
@@ -156,7 +161,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 	SetGraphMode(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_BPP);
 
 	//ウィンドウタイトル
-	SetMainWindowText("Reverse Reversi 1.6.0");
+	SetMainWindowText("Reverse Reversi 1.6.2");
 
 	//背景色の設定
 	SetBackgroundColor(0, 0, 0);
@@ -176,6 +181,10 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 
 	// オプション設定読込 (settings.ini から、1.5.7 で導入)
 	loadOptions();
+
+	//1.6.1: ランクアップ SE 専用ハンドルをロード (BGM と別チャンネルで再生して BGM 中断を防止)
+	//-1 が返ればロード失敗 (呼出側で != -1 ガード) — wav 不在時も SE 抜きでゲーム継続
+	g_rankUpSeHandle = LoadSoundMem("res/loop_68.wav");
 
 	//メインループ
 	while (1)

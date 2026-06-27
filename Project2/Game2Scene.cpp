@@ -25,6 +25,10 @@ static int			resultNewTier	= 0;
 static int			rankUpFrame		= 0;
 static bool			xpApplied		= false;
 
+//1.6.1 で追加 (項目 4 中断機能): Q キー 2 段階確認タイマー
+//Game2 は active 範囲が広く、PLAYING/TURN_MSG/PASS_MSG に加え「ラウンド遷移待ち (FINISHED + Round 1)」も含む
+static int			abortConfirmTimer	= 0;
+
 //外部定義(GameMain.cppにて宣言)
 extern int Input, EdgeInput;
 
@@ -48,6 +52,9 @@ BOOL initGame2Scene(void)
 	rankUpFrame		= 0;
 	xpApplied		= false;
 
+	//1.6.1 中断確認タイマーリセット
+	abortConfirmTimer	= 0;
+
 	//フォント設定 (init で 1 回、move/render では呼ばない)
 	ChangeFont("ＭＳ 明朝");
 
@@ -70,6 +77,18 @@ void changeBGM()
 //	フレーム処理 (1 フレーム分の状態遷移のみ、γ-1 で独自 while ループ撤去)
 void moveGame2Scene()
 {
+	//1.6.1: 対局中の Q キー中断機能 (PLAYING/TURN_MSG/PASS_MSG + ラウンド遷移待ち中も active)
+	//ラウンド 1 終了 → 240f 待ち中 (Round 2 開始前) も「対局途中」として扱い、Q で中断可
+	//Round 2 FINISHED + RANK_UP/DEMOTED 中は非アクティブ (X キー復帰の通常経路)
+	bool abortActive =
+		(status == GAME_STATUS_PLAYING || status == GAME_STATUS_TURN_MSG || status == GAME_STATUS_PASS_MSG) ||
+		(status == GAME_STATUS_FINISHED && CurrentRound == GAME_ROUND_FIRST);
+	if (tryAbortMidGame(&abortConfirmTimer, abortActive))
+	{
+		changeScene(SCENE_MENU);
+		return;
+	}
+
 	switch (status)
 	{
 	case GAME_STATUS_PLAYING:               //プレイモードに入る
@@ -115,7 +134,8 @@ void moveGame2Scene()
 				if (resultNewTier > resultOldTier) {
 					status = GAME_STATUS_RANK_UP;
 					rankUpFrame = 0;
-					PlaySoundFile("res/loop_68.wav", DX_PLAYTYPE_BACK);
+					//1.6.1: SE 専用ハンドル経由で再生 (Game2 Round 2 BGM = loop_68.wav LOOP と別チャンネル、BGM 維持)
+					if (g_rankUpSeHandle != -1) PlaySoundMem(g_rankUpSeHandle, DX_PLAYTYPE_BACK);
 				}
 				else if (resultNewTier < resultOldTier) {
 					status = GAME_STATUS_DEMOTED;
@@ -159,20 +179,24 @@ void moveGame2Scene()
 		else if (CurrentRound == GAME_ROUND_SECOND)
 		{
 			//ラウンド 2 終了時: X キーでメニュー復帰 (γ-1 で旧 releaseGame2Scene 直呼びを撤去)
-			if (CheckHitKey(KEY_INPUT_X) == 1) changeScene(SCENE_MENU);
+			//1.6.1 polish: isXKeyJustPressed でエッジ検出、RANK_UP/DEMOTED スキップからの連鎖を防止
+			if (isXKeyJustPressed()) changeScene(SCENE_MENU);
 		}
 		break;
 
 	case GAME_STATUS_RANK_UP:	//1.6.0 ランクアップ演出 (240f アニメ、スキップ可)
 		rankUpFrame++;
-		if (rankUpFrame >= RANK_UP_DURATION_FRAMES || (EdgeInput & PAD_INPUT_1) || CheckHitKey(KEY_INPUT_X) == 1) {
+		if (rankUpFrame >= RANK_UP_DURATION_FRAMES || (EdgeInput & PAD_INPUT_1) || isXKeyJustPressed()) {
 			status = GAME_STATUS_FINISHED;
+			//1.6.1 polish: SE (loop_68.wav) を停止 → BGM (Game2 Round 2 は loop_68.wav LOOP) との二重再生を解消
+			//SE と BGM が同じファイルだが内部チャンネルは別なので StopSoundMem は SE のみ停止 (BGM 維持)
+			if (g_rankUpSeHandle != -1) StopSoundMem(g_rankUpSeHandle);
 		}
 		break;
 
 	case GAME_STATUS_DEMOTED:	//1.6.0 降格演出 (120f アニメ、スキップ可)
 		rankUpFrame++;
-		if (rankUpFrame >= DEMOTE_DURATION_FRAMES || (EdgeInput & PAD_INPUT_1) || CheckHitKey(KEY_INPUT_X) == 1) {
+		if (rankUpFrame >= DEMOTE_DURATION_FRAMES || (EdgeInput & PAD_INPUT_1) || isXKeyJustPressed()) {
 			status = GAME_STATUS_FINISHED;
 		}
 		break;
@@ -243,6 +267,15 @@ void renderGame2Scene(void)
 	{
 		rbDrawDemoteAnimation(rankUpFrame, resultOldTier, resultNewTier);
 	}
+
+	//1.6.1: 中断ガイド (PLAYING/TURN_MSG/PASS_MSG + ラウンド遷移待ち中も active) + 確認モード中央オーバーレイ
+	//Game2 ラウンド 1 FINISHED 時は finish msg (Y=410..530 の 3 行予告文) と被るので guideY=350 に上げる
+	//(Round 表示 Y=240+40=280 と finish msg 開始 Y=410 の間に挟む、ガイド Y=350..378 で双方と 30px 程度の gap 確保)
+	bool abortActive =
+		(status == GAME_STATUS_PLAYING || status == GAME_STATUS_TURN_MSG || status == GAME_STATUS_PASS_MSG) ||
+		(status == GAME_STATUS_FINISHED && CurrentRound == GAME_ROUND_FIRST);
+	int abortGuideY = (status == GAME_STATUS_FINISHED && CurrentRound == GAME_ROUND_FIRST) ? 350 : 420;
+	rbDrawAbortGuide(abortConfirmTimer, abortActive, abortGuideY);
 }
 
 //	シーン終了時の後処理 (シーン退場時に毎回呼ばれる、γ-1 でリソース解放を追加 + γ-2 副次解消で DxLib_End 撤去)

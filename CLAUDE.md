@@ -1,6 +1,6 @@
 ﻿# CLAUDE.md — ReversedReversi プロジェクト情報
 
-Visual Studio (MSVC) + DxLib による C++ リバーシゲーム。本体は [Project2.sln](Project2.sln) / [Project2/](Project2/) 配下。タイトルバー表記は「Reverse Reversi 1.6.0」、メニュー描画は「まきもどリバーシ Ver 1.6.0」([Project2/MenuScene.cpp:67](Project2/MenuScene.cpp#L67))。日本語 Windows 環境 (コードページ 932) でビルドする前提。バージョン履歴は [CHANGELOG.md](CHANGELOG.md)、ライセンスは [LICENSE.md](LICENSE.md) (MIT)、公開向け案内は [README.md](README.md) を参照 (採番ルール: フェーズ MINOR + サブターゲット PATCH + **挙動不変なコード変更は SUBPATCH** (4 セグメント、1.5.6.1 で導入)、ドキュメント/メタファイルのみの変更は据え置き、**大型機能リリース (B2 ランクシステム等) はフェーズ転換相当として MINOR バンプ可 — 1.6.0 で B2 ランクシステム実装時に採用** — CHANGELOG 冒頭参照)。
+Visual Studio (MSVC) + DxLib による C++ リバーシゲーム。本体は [Project2.sln](Project2.sln) / [Project2/](Project2/) 配下。タイトルバー表記は「Reverse Reversi 1.6.2」、メニュー描画は「まきもどリバーシ Ver 1.6.2」([Project2/MenuScene.cpp:68](Project2/MenuScene.cpp#L68))。日本語 Windows 環境 (コードページ 932) でビルドする前提。バージョン履歴は [CHANGELOG.md](CHANGELOG.md)、ライセンスは [LICENSE.md](LICENSE.md) (MIT)、公開向け案内は [README.md](README.md) を参照 (採番ルール: フェーズ MINOR + サブターゲット PATCH + **挙動不変なコード変更は SUBPATCH** (4 セグメント、1.5.6.1 で導入)、ドキュメント/メタファイルのみの変更は据え置き、**大型機能リリース (B2 ランクシステム等) はフェーズ転換相当として MINOR バンプ可 — 1.6.0 で B2 ランクシステム実装時に採用** — CHANGELOG 冒頭参照)。
 
 姉妹プロジェクトに [TwistTimeStopper](d:\Repositories\TwistTimeStopper) があり、シーン管理の雛形を共有している (元は同じ「Scene管理付き空プロジェクトRev2」テンプレート)。TwistTimeStopper は既に α/β/γ/δ のリファクタを完走しており、共通基盤化のリファレンスとして本ファイル中で頻繁に参照する。
 
@@ -154,7 +154,8 @@ typedef enum _SCENE_NO {
     SCENE_GAME2,        // まきもどり次元 (完成、12×12 固定、2 ラウンド制)
     SCENE_GAME3,        // あまちゃん次元 (完成、1.5.8 で 6/8/10/12 サイズ可変)
     SCENE_TEMPLATE,     // 空シーン雛形 (menu[] 非掲載、固定名コピー元、1.5.8 で旧 SCENE_GAME4 から改名)
-    SCENE_OPTIONS,      // オプション設定画面 (1.5.7 で導入、Game3 のトグル + 1.5.8 で盤面サイズ)
+    SCENE_OPTIONS,      // オプション設定画面 (1.5.7 で導入、Game3 のトグル + 1.5.8 で盤面サイズ、1.6.1 で盤面サイズは SCENE_BOARD_SIZE へ分離)
+    SCENE_BOARD_SIZE,   // 盤面サイズ設定画面 (1.6.1 で導入、OPTIONS から遷移、項目 6(a))
     SCENE_MAX           // 上限センチネル
 } SCENE_NO;
 ```
@@ -415,6 +416,10 @@ default: break;  // ← 追加
 - **`SCENE_GAME2` (まきもどり次元、旧 SCENE_GAME4)** — Game1 の拡張版、2 ラウンド制 (`CurrentRound`)、ラウンド間で `rbRemovePieces(&state, 96)` で 96 マス削除、BGM 切替 (`changeBGM`)。γ-1 でフレーム駆動化 + ラウンド遷移 240 フレームカウンタ化 + 終了メッセージフリッカー解消 + ラウンド 2 終了時の X キーメニュー復帰 + `releaseGame2Scene` の `DxLib_End` 直呼び撤去 (γ-2 副次解消) 完了
 - **`SCENE_GAME3` (あまちゃん次元、旧 SCENE_GAME5)** — γ-3 (2026-06-26) で独自モード化完了。内部 2 フェーズ構造 (`GAME3_PHASE_NAME_ENTRY` → `GAME3_PHASE_PLAYING`)。名前入力は `KeyInputSingleCharString` + Enter キー検出で確定 (元の 1 文字入力即遷移バグ解消)。対局は Game1 と同じ盤面ロジック + 思考テーブル `{ rbThinkPlayer, rbThinkRandom }` で**弱い CPU** (置ける場所からランダム選択) を採用、初心者でも勝てる難易度。対局画面の右パネルに `PLAYER:` として `nameTmp` を表示。後続セッション (2026-06-26) で **ヒント表示** (`rbDrawHints`、置けるマスにオレンジ半透明丸、プレイヤー手番中のみ) + さらに後続 (2026-06-26) で **ヒントマスへの取得コマ数表示** (オレンジ円の中心に白で裏返り枚数を中央寄せ表示、`HINT_GAIN_FONT_SIZE=20`) を追加。1.5.6 (2026-06-26) で **「待った」機能** (R キー、`prevState`/`prevStatus`/`prevTurn`/`undoAvailable` static で前手スナップショット保持、CPU 応手も含めた巻き戻し、FINISHED 中は無効、`undoAvailable && status != FINISHED` 時のみ「R: 待った」ガイド表示) を追加。1.5.7 (2026-06-26) で **オプション設定のトグル化** (`SCENE_OPTIONS` 新設、ヒント / 取得コマ数 / 弱い CPU / 待った の 4 トグルを `g_game3Options` で管理、`settings.ini` 永続化) を追加。1.5.8 (2026-06-27) で **盤面サイズ縮小モード** (6×6 / 8×8 / 10×10 / 12×12 の 4 段階、`ReversiOptions.boardSize` + OPTIONS 5 行目で ←→ 選択 + 右側 320×320 プレビュー、`ReversiBoard.size/cellPx/originX/Y` で動的サイズ対応、Game1/Game2 は 12×12 固定維持) を追加。1.5.9 (2026-06-27) で **画面サイズ拡張** (800×700 → 1280×900、盤面ターゲット 576 → 720px、CELL_PX=60/72/90/120 で全サイズ綺麗に割り切れ、フォントデフォルト 32 → 40、OPTIONS プレビュー 320 → 500、全シーンリレイアウト)
 - **B2 プレイヤーランクシステム** (1.6.0、2026-06-27) — **完成**。10 ティア (NOVICE → APPRENTICE → ADEPT → EXPERT → MASTER → GRANDMASTER → SAGE → LEGEND → MYTHIC → ETERNAL) × XP 計算式 (勝=30+コマ差+短手数+完封 / 引分=15 / 負=10、モード倍率 Game1=×1.0/Game2=×1.4/Game3=×0.6 + Game3 オプションペナルティ) × 全モード降格 (降格圧力 5+tier×2 XP、バッファ 50 XP) × 多段ランクアップ演出 240f (フェード→スケール+回転→文字フェード→点滅) + 降格演出 120f。永続化は `settings.ini` に 4 キー (totalXp/currentTier/totalGames/totalWins) 追加、1.5.x 形式と完全後方互換。UI は MenuScene 右上にランク章 + 進捗バー + 次閾値、各 Game シーン右パネル下部に小ランク章、終局時に XP オーバーレイ + ランクアップ/降格演出。OPTIONS 6 行目「ランクをリセット」(Enter 2 連打で確定)
+- **対局途中での中断機能 (Q キー、2 段階確認、XP 計上なし)** (1.6.1、2026-06-27) — **完成**。Game1/2/3 全モードで対局中 (PLAYING/TURN_MSG/PASS_MSG + Game2 ラウンド遷移待ち) に Q キー押下 → 180f タイマー + 中央オーバーレイで「中断しますか?」確認 → 2 回目 Q で `changeScene(SCENE_MENU)` 復帰 (XP 計上なし、totalGames/totalWins 不変)。共通ヘルパ `tryAbortMidGame` / `rbDrawAbortGuide` ([GameSceneMain.cpp](Project2/GameSceneMain.cpp)) で 3 シーン共有、右パネル下部 Y=420 に「Q: 中断」常時ガイド (フォント 28、ColorSky)。FINISHED/RANK_UP/DEMOTED 中と Game3 NAME_ENTRY 中は非アクティブ
+- **盤面サイズ設定専用シーン `SCENE_BOARD_SIZE`** (1.6.1、2026-06-27) — **完成**。1.5.8 で OPTIONS に組み込んでいた盤面サイズ + 320×320 プレビューを本シーンに分離 ([BoardSizeScene.cpp](Project2/BoardSizeScene.cpp) / [.h](Project2/BoardSizeScene.h))。タイトル「盤面サイズ設定」+ 現在サイズ表示 + プレビュー (810,200) + ←→/Enter/Space サイズ循環 + X キーで OPTIONS 復帰 (`changeScene(SCENE_OPTIONS)` ハードコード)。OPTIONS 5 行目「盤面サイズ設定 →」リンクから Enter で起動
+- **ランクアップ演出の粗修正** (1.6.1、2026-06-27) — **完成**。(a) BGM 再開始対策: SE 専用ハンドル `g_rankUpSeHandle` ([GameMain.h](Project2/GameMain.h)/cpp) を `LoadSoundMem("res/loop_68.wav")` で WinMain ロード、3 Game シーンで `PlaySoundMem(g_rankUpSeHandle, DX_PLAYTYPE_BACK)` に置換 → BGM (`PlaySoundFile` 経由) と別チャンネルで再生して BGM 中断回避、`GameRelease` で `DeleteSoundMem`。(b) 揺れ動き対策: [GameSceneMain.cpp `rbDrawRankUpAnimation`](Project2/GameSceneMain.cpp) 段階 2 の `sinf/cosf` オフセット撤去 → 中心 (640, 384) 固定でスケールアップのみ
+- **OPTIONS レイアウト改善** (1.6.1、2026-06-27) — **完成**。(a) 6 行目「ランクをリセット」とプレビュー領域の被りを SCENE_BOARD_SIZE 分離で根本解消。(b) ラベル描画 (LABEL_X=130) と ON/OFF・サイズ・XP 描画 (TOGGLE_X=500) を別 `DrawString` 呼出に分離して固定 X で揃え、空白パディング撤去。確認/完了モード文言は TOGGLE_X 列にインライン表示、操作ガイドは常時 3 行表示
 
 ### 未完成 (要対応)
 
@@ -433,9 +438,9 @@ Game3 専用ではなく、ふつう/まきもどり/あまちゃんを横断す
 1. ~~**プレイヤーランクシステム**~~ — **1.6.0 (2026-06-27) で完了** ([§10「完成済み」](#10-未完成機能の方針) の B2 エントリ参照)。10 ティア + XP + 全モード降格 + 多段アニメ演出 + OPTIONS リセットで実装、設計検討事項 (モード倍率 / Game3 オプションペナルティ / リセット手段) もすべて確定
 2. **カラーパレット増設 (継続的)** — 1.5.6.1 (2026-06-26) で初期 7 色 (`ColorBronze`/`Silver`/`Gold`/`Platinum`/`Warn`/`Overlay`/`Hover`) を `ColorXxx` 命名で extern 追加済 ([CHANGELOG.md](CHANGELOG.md) [1.5.6.1] 参照)。**1.5.9.1 (2026-06-27) でランク章 +6 色** (`ColorIron`/`Diamond`/`Emerald`/`Ruby`/`Sapphire`/`Amethyst`) **+ 汎用 UI +4 色** (`ColorSuccess`/`Error`/`Info`/`Accent`) **を追加して計 20 色** (CHANGELOG.md [1.5.9.1] 参照)。ランク章 10 色 (Bronze〜Platinum 4 + Iron/Diamond/Emerald/Ruby/Sapphire/Amethyst 6) で LoL 9 ティア / Overwatch 7 ティア / 将棋 9 段位どれにも余裕で対応可能。本リリースでは未参照、B1/B2/テーマ化等の将来機能で使用される伏線。**継続的タスク** として残置: 今後の機能拡張で新色が必要になり次第、同じ `ColorXxx` 命名で [GameMain.cpp](Project2/GameMain.cpp) 定義 + [GameMain.h](Project2/GameMain.h) extern 追加を継続。1 色追加ごとに SUBPATCH バンプ (1.5.6.1 → 1.5.6.2 → ...)、まとまった色バッチでも SUBPATCH 1 つに集約可 (1.5.6.1 で 7 色 / 1.5.9.1 で 10 色のバッチ追加実績)、機能と同時追加の場合は機能側 PATCH バンプに巻き込み。**未対応**: 既存インライン `GetColor()` 呼び出し (盤面色 `(0,100,20)` / `(0,140,20)`、メッセージ箱グレー `(150,150,150)`、ヒントオレンジ `(255,165,0)`、OPTIONS プレビューの黒/白駒、MenuScene/GameSceneTemplate の白赤リテラル) の extern 化 — 別タスクで一括対応する場合 `BoardColorDark/Light` `MsgBoxBg` `ColorHintOrange` 等の命名統一を要設計検討
 3. **描画品質改善 (ガビガビ対策)** — 1.5.9 で盤面 720×720 / コマ 60〜120px に拡張後、ユーザー報告で **盤面グリッド線とコマ円輪郭のジャギー** が顕在化 (2026-06-27)。原因は 2 系統: **(a) `DrawLine` の AA 無し**: 1px 細線をビットマップ直書きしているため斜め成分のないグリッド線でも端部がジャギー、**(b) `DrawExtendGraph` のニアレストネイバー拡大**: piece.png 47×47 ソースを 60/72/90/120px に約 1.28〜2.55× 拡大、デフォルトは `DX_DRAWMODE_NEAREST` のため拡大率が大きいほどジャギー悪化。**対策候補** (どれか単独 or 複合): **(1) `SetDrawMode(DX_DRAWMODE_BILINEAR)` を `rbDrawPieces` 内で局所適用**: バイリニア補間で輪郭平滑化、関数末尾で `DX_DRAWMODE_NEAREST` 復元 (副作用最小、実装コスト最低)、**(2) piece.png 高解像度差し替え**: 120×120 ソースを用意し最大セル時に等倍、他サイズで縮小描画 (縮小はジャギー出にくい、画質改善効果最大、画像差し替えコスト + `DX_DRAWMODE_BILINEAR` 併用が定石)、**(3) グリッド線の太線化 or 盤面背景テクスチャ化**: `DrawLine` を 2px に重ね描き or 盤面 + グリッドを 1 枚のテクスチャに統合して `DrawGraph` で描画、テクスチャ系統は `DX_DRAWMODE_BILINEAR` で平滑化可能。**推奨は (1) 単独着手**: 即効性高くロールバック容易、効果不足なら (2) を追加検討。版数は SUBPATCH (1.5.9.1) または挙動変更含めて機能 PATCH バンプに巻き込み
-4. **対局途中での中断機能 (give up / メニュー復帰)** — 1.6.0 リリース後のユーザー指摘で発覚 (2026-06-27): 現状は対局中 (GAME_STATUS_PLAYING/TURN_MSG/PASS_MSG) に X キーが無効、ESC はプロセス終了 (WinMain ループ脱出) のため、**一度対局を始めたら FINISHED まで戻れない**。Game3 の「待った」 (R キー) は 1 手戻し専用で、メニュー復帰には使えない。**仕様要件**: (1) 対局中に Esc 以外の専用キー (例: Q キー / Ctrl+X / Backspace) で「中断」操作を提供、(2) 誤操作防止のため確認プロンプト 2 段階 (1 回目 押下で「中断しますか? もう一度 Q で確定」を ColorWarn 表示、2 回目で `changeScene(SCENE_MENU)`、180f タイマー切れまたは別キーで解除)、(3) **中断時は XP 計上しない** (ユーザー指示)、totalGames/totalWins も加算しない (対局未完了として扱う)、(4) Game2 ラウンド 1 → ラウンド 2 遷移中の中断も同様に XP なし、(5) Game3 の「待った」スナップショット (prevState 等) と Game1/2 の盤面状態を中断時に破棄 (release で `state = {}` + フラグリセット)。**実装規模**: 小〜中、各 Game シーン (Game1/2/3) の `moveXxxScene` に確認タイマー (`abortConfirmTimer`) + Q キー判定 + 確認文言の renderXxxScene 描画追加で 30〜40 行 × 3 シーン = 90〜120 行。各シーン共通ヘルパ `bool tryAbortMidGame(int* abortConfirmTimer, GAME_STATUS status)` を [GameSceneMain.cpp](Project2/GameSceneMain.cpp) に切り出すと重複削減可。**UI 配置**: 中断確認文言は対局画面の上半分中央あたり (盤面と被るが半透明背景で視認性確保、`rbDrawResultOverlay` と同方式)、または右パネルの空き Y=420〜480 領域に小型表示で「Q: 中断」ガイドを常時 + 押下後に確認文言オーバーレイ。**版数**: 機能追加で挙動変化を伴うため PATCH バンプ 1.6.0 → 1.6.1 想定
-5. **ランクアップ演出の粗修正** — 1.6.0 リリース後のユーザー指摘で発覚 (2026-06-27)、2 系統の問題: **(a) BGM の再開始**: [Game1Scene.cpp](Project2/Game1Scene.cpp) / [Game2Scene.cpp](Project2/Game2Scene.cpp) / [Game3Scene.cpp](Project2/Game3Scene.cpp) でランクアップ判定時に `PlaySoundFile("res/loop_68.wav", DX_PLAYTYPE_BACK)` を呼んでいるが、これによって既存の LOOP BGM (Game1/Game3=loop_95.wav / Game2=loop_68.wav) が中断され、ランクアップ演出 240f 終了後に **BGM が冒頭から再開** される現象。原因は DxLib `PlaySoundFile` が同一ファイル / 同一チャンネルに対する重複呼出時の挙動 (再生位置リセット + LOOP 状態破棄) と推測。**対策候補**: (1) `LoadSoundMem` + `PlaySoundMem` で SE 専用ハンドルを事前ロード (BGM とは別チャンネル想定)、(2) ランクアップ用に専用 wav 追加 (res/rankup.wav 等、既存 BGM と全く別ファイル) で重複回避、(3) BGM を一時停止 → SE 再生 → BGM 再開 (現在の再生位置を `GetSoundCurrentTime` で記録 → `SetSoundCurrentTime` で復帰)。**推奨は (1)**: リソース追加不要 + 副作用最小。**(b) ランク章の揺れ動き**: [GameSceneMain.cpp:rbDrawRankUpAnimation](Project2/GameSceneMain.cpp) で「回転感」演出のために `sinf(angle)*8 / cosf(angle)*8` のオフセットを円中心 (640, 384) に加算しているが、円は回転対称なので **見た目には中心が半径 8 の小円軌道を描く揺れ** に見える失敗演出。**対策**: (1) オフセットを完全撤去 (中心固定でスケールのみで十分、シンプル路線)、(2) 円の代わりに **星型 / 多角形 / リボン形** など回転対称でない形状に変更 (回転が視覚的に意味を持つ)、(3) 円の周囲に小さな星 / きらめきを多数配置して回転 (中心は動かさず周辺要素のみ回転)。**推奨は (1) 単独着手**: 即効性高くコード削減、効果不足なら (3) を追加検討。**実装規模**: (a) 約 +20 行 / (b) 1〜2 行削除 = 合計 約 +20 行。**版数**: 4 (中断機能) と同時実装で PATCH バンプ 1.6.0 → 1.6.1 に巻き込み推奨、または単独で SUBPATCH 1.6.0.1
-6. **OPTIONS シーンのレイアウト改善** — 1.6.0 リリース後のユーザー指摘 (2026-06-27)、2 系統の問題: **(a) 6 行目「ランクをリセット [TIER N XP]」がプレビュー領域と被る**: ティア名 + XP 値の幅が動的に変化し、最悪ケース (例「GRANDMASTER 99999 XP」など) でプレビュー領域 (x=810 開始) に食い込む。スクリーンショットで「APPRENTICE 84 XP」(中程度) で既に右端 "XP]" がプレビューに被って判読困難。**根本対策 (ユーザー提案)**: **盤面サイズ + プレビューを別画面 (新規 `SCENE_BOARD_SIZE`) に分離**。OPTIONS は ON/OFF トグル系 (ヒント / 取得数 / 弱 CPU / 待った / ランクリセット) のみ、新シーンに盤面サイズ ←→ 選択 + 320×320 プレビュー描画を移動。これで OPTIONS の項目列が画面左半分 (x=130..600 程度) に集約され、プレビュー領域 (x=810+) との衝突が消滅。**実装手順**: [GameSceneTemplate.cpp](Project2/GameSceneTemplate.cpp) をコピー → `BoardSizeScene` (仮称) として識別子置換 → `renderBoardPreview` ([OptionsScene.cpp](Project2/OptionsScene.cpp) static 関数) を新シーンに移動 → SCENE_NO enum 拡張 + sceneTable[] 拡張 + vcxproj 登録 (CLAUDE.md §4 5 ステップ手順)。OPTIONS の 5 行目「盤面サイズ」は「盤面サイズ設定 →」のような遷移ボタンに変更、Enter で `changeScene(SCENE_BOARD_SIZE)`。新シーンから X キーで OPTIONS に戻る (要 prevScene 復帰経路、または直接 SCENE_OPTIONS にハードコード)。**実装規模**: 新シーン 約 +150 行 + OPTIONS 改修 約 +20 行 = 約 +170 行。**(b) ON/OFF 表示のインデント不揃い**: 現実装は `labels[]` に空白パディング (例 `"ヒント表示       "`) を埋め込んで `DrawFormatString("%s%s", label, "[ ON ]")` で連結描画しているが、DxLib + MS 明朝のフォントで日本語全角文字の幅と ASCII 半角空白の幅の比率が一定でないため、ラベル長が違う行で ON/OFF の左端 X 位置が揃わない。**対策候補**: (1) **ラベル描画と ON/OFF 描画を分離 + ON/OFF は固定 X で描画**: `DrawString(130, y, label, color)` で日本語部のみ描画 → `DrawString(500, y, "[ ON ]", color)` で全行同一 X に固定 (推奨、シンプル + 確実)、(2) ラベル描画後に `GetDrawStringWidth(label)` で実描画幅を測って ON/OFF を相対位置で描画 (動的だが計算コスト)、(3) 等幅フォントに切替 (他画面と整合性崩れる、不採用)。**推奨は (1)**: 約 +10 行で確実に整列。ユーザー言及の「オプション名と ON/OFF 表示は分けたほうがいい」と一致。**実装規模**: (b) 約 +10 行。**版数**: (a) (b) 同時実装で PATCH バンプ 1.6.0 → 1.6.1 に巻き込み、項目 4/5 と一緒のリリースが効率的
+4. ~~**対局途中での中断機能 (give up / メニュー復帰)**~~ — **1.6.1 (2026-06-27) で完了** ([§10「完成済み」](#10-未完成機能の方針) の中断機能エントリ参照)。Q キー 2 段階確認 (180f タイマー) + XP 計上なし + Game1/2/3 全モード対応 + Game2 ラウンド遷移待ち中も active + 共通ヘルパ `tryAbortMidGame` / `rbDrawAbortGuide` で実装、右パネル「Q: 中断」常時ガイド + 中央オーバーレイ確認文言
+5. ~~**ランクアップ演出の粗修正**~~ — **1.6.1 (2026-06-27) で完了** ((a) BGM 再開始対策として `LoadSoundMem` + `PlaySoundMem` の SE 専用ハンドル化 → BGM と別チャンネルで再生して中断回避、(b) ランク章揺れ動き対策として `sinf/cosf` オフセット撤去 → 中心 (640, 384) 固定でスケールのみ。詳細は [§13 履歴](#13-過去の整理作業履歴) 参照)
+6. ~~**OPTIONS シーンのレイアウト改善**~~ — **1.6.1 (2026-06-27) で完了** ((a) 盤面サイズ + プレビューを新規 SCENE_BOARD_SIZE に分離して OPTIONS の項目列とプレビュー領域の衝突を根本解消、(b) ラベル描画 (LABEL_X=130) と ON/OFF 描画 (TOGGLE_X=500) を別 `DrawString` 呼出に分離して固定 X で揃え)
 
 ### 将来予定 (リポジトリ整備)
 
@@ -1026,6 +1031,110 @@ DxLib パスを `.props` に集約 + x64 ターゲット追加で 4 構成対応
 - 既存リソース流用 (新規 wav 追加なし): ランクアップ効果音は既存 `res/loop_68.wav` を `DX_PLAYTYPE_BACK` で流用
 - ゲームロジック (rbPutPiece の盤面操作・rbIsPass・rbThinkCpu/rbThinkRandom・rbCheckResult・rbCountPieces・rbRemovePieces) は **完全に挙動不変** — `state->moveCount++` の 1 行追加と `rbInit` での 2 フィールド初期化のみ
 - 1.5.x 既存 settings.ini は完全後方互換、新 4 キー不在時は g_playerStats = { 0, 0, 0, 0 } のデフォルトで NOVICE 起動
+
+**検証**: 全 4 構成リビルド (Debug|Win32 / Release|Win32 / Debug|x64 / Release|x64) いずれも警告 0 / エラー 0
+
+### 項目 4/5/6 実装 (1.6.0 リリース後の指摘修正、完了, 2026-06-27, 1.6.1)
+
+§10 将来予定 (プロジェクト全体の拡張) 項目 4/5/6 を 1 リリース (1.6.1) にまとめて実装。すべて 1.6.0 リリース後のユーザープレイテストで発覚した修正対象。プランモードで設計判断 8 項目を整理してユーザー承認、5 段階ビルド検証で安全に積み上げ。
+
+**項目 4: 対局途中での中断機能** (Q キー、2 段階確認、XP 計上なし):
+
+- **共通ヘルパ** ([GameSceneMain.cpp](Project2/GameSceneMain.cpp)): `tryAbortMidGame(int* abortConfirmTimer, bool active)` で Q キーのエッジ検出 (関数内 static `prevQ` で前フレーム状態保持) + 180f タイマー管理 + 2 回目押下で true 返却。`rbDrawAbortGuide(int abortConfirmTimer, bool active)` で右パネル「Q: 中断」常時ガイド (フォント 28、Y=420、ColorSky) + 確認モード中の中央オーバーレイ (半透明黒背景 X=100..630, Y=310..460、`rbDrawResultOverlay` と同方式)
+- **各 Game シーン** ([Game1Scene.cpp](Project2/Game1Scene.cpp) / [Game2Scene.cpp](Project2/Game2Scene.cpp) / [Game3Scene.cpp](Project2/Game3Scene.cpp)): ファイルスコープ static `abortConfirmTimer` 追加、init でリセット、`moveXxxScene` 先頭で active 判定 + `tryAbortMidGame` 呼出 → true なら `changeScene(SCENE_MENU); return;`、`renderXxxScene` 末尾で `rbDrawAbortGuide` 呼出
+- **active 範囲**: Game1 = PLAYING/TURN_MSG/PASS_MSG、Game2 = 上記 + `(status == FINISHED && CurrentRound == FIRST)` (ラウンド遷移待ち中も中断可)、Game3 = `phase == PHASE_PLAYING && (status == PLAYING/TURN_MSG/PASS_MSG)` (NAME_ENTRY 中は Q が名前入力対象なので無効化)
+- **中断時の動作**: `changeScene(SCENE_MENU)` のみ実行 → release で BGM 停止 + 画像ハンドル解放、次回 init で `state.moveCount=0` / `undoUsedInMatch=false` リセット。XP 計算 / `totalGames++` / `totalWins++` / `saveOptions()` は走らない (FINISHED 経由しないため)
+- **Q キー選定理由**: ESC (プロセス終了) / X (FINISHED 後にメニュー復帰) / R (Game3 待った) / Enter (名前確定) と独立した未使用キー、Game3 NAME_ENTRY は `KeyInputSingleCharString` 経由なので干渉せず、Quit の頭文字で覚えやすい
+
+**項目 5: ランクアップ演出の粗修正** ((a) BGM 再開始 + (b) ランク章揺れ動き):
+
+- **(a) BGM 再開始対策**: `g_rankUpSeHandle` グローバルハンドル ([GameMain.h](Project2/GameMain.h) extern + [GameMain.cpp](Project2/GameMain.cpp) 定義、初期 -1) を `WinMain` で `LoadSoundMem("res/loop_68.wav")` ロード、`GameRelease` ([GameSceneMain.cpp](Project2/GameSceneMain.cpp)) で `DeleteSoundMem` 解放。3 Game シーンのランクアップ判定箇所 (`PlaySoundFile("res/loop_68.wav", DX_PLAYTYPE_BACK)`) を `if (g_rankUpSeHandle != -1) PlaySoundMem(g_rankUpSeHandle, DX_PLAYTYPE_BACK);` に置換 → `PlaySoundFile` (BGM 用) と別チャンネルで再生されるため BGM 中断なし、演出 240f 終了後の BGM 冒頭再開始問題解消
+- **(b) ランク章揺れ動き対策**: [GameSceneMain.cpp `rbDrawRankUpAnimation`](Project2/GameSceneMain.cpp) 段階 2 (frame 30-90) で `angle`/`offsetX`/`offsetY` を `sinf/cosf` で計算して半径 8px の小円軌道オフセットを加えていたが、円は回転対称なので「中心が揺れ動く」失敗演出になっていた。**オフセット撤去で中心 (640, 384) 固定** に変更、スケールアップ感が際立つ
+- **`<math.h>` include は将来の sinf/cosf 再利用余地を残して保持** (本リリースでは未参照)
+
+**項目 6: OPTIONS シーンのレイアウト改善** ((a) プレビュー衝突 + (b) ON/OFF 不揃い):
+
+- **(a) 盤面サイズ + プレビュー分離 SCENE_BOARD_SIZE 新設** ([BoardSizeScene.cpp](Project2/BoardSizeScene.cpp) / [.h](Project2/BoardSizeScene.h) を [GameSceneTemplate](Project2/GameSceneTemplate.cpp) コピーで作成、CLAUDE.md §4 5 ステップ手順に従う):
+  - `renderBoardPreview` (320×320, 位置 810/200) と `cycleBoardSize` を OPTIONS から本シーンへ移植 (static 関数)
+  - タイトル「盤面サイズ設定」フォント 50 (180,40) + 「現在のサイズ:」/「12×12」フォント 40 (180,140/200) + プレビュー右側 + 操作ガイド (180,580) フォント 28 で 3 行
+  - ←→ で前/次サイズ循環、Enter/Space で次サイズ循環 (互換性維持)、X キーで `changeScene(SCENE_OPTIONS)` 復帰 (ハードコード、本シーンは OPTIONS からのみ起動される設計)
+  - [GameSceneMain.h](Project2/GameSceneMain.h) `SCENE_NO` enum に `SCENE_BOARD_SIZE` 追加 (SCENE_OPTIONS の後)、[GameSceneMain.cpp](Project2/GameSceneMain.cpp) `sceneTable[]` に 1 行追加 + `#include "BoardSizeScene.h"`、[Project2.vcxproj](Project2/Project2.vcxproj) / [.filters](Project2/Project2.vcxproj.filters) に登録
+- **(b) ON/OFF 揃え** ([OptionsScene.cpp](Project2/OptionsScene.cpp)):
+  - `labels[]` の全角空白パディング撤去 (`"ヒント表示       "` → `"ヒント表示"` 等)
+  - ラベル描画 (`DrawString(LABEL_X=130, y, labels[i], color)`) と ON/OFF・サイズ・XP 描画 (`DrawString(TOGGLE_X=500, y, "[ ON ]", color)` 等) を別 `DrawString` 呼出に分離 → 固定 X=500 で完全揃え
+  - 5 行目を「盤面サイズ設定」リンク化 (`12×12  →` 表示)、Enter で `changeScene(SCENE_BOARD_SIZE)` 遷移、`renderBoardPreview` 呼出 + ←→ サイズ循環は本シーンから撤去
+  - 6 行目「ランクをリセット」の確認/完了モード文言を TOGGLE_X 列にインライン表示 (「もう一度 Enter」/「完了!」)、操作ガイドは常時 3 行表示で基本操作見える設計
+
+**変更ファイル一覧**: 修正 12 + 新規 2 = 計 14 ファイル
+- Project2/GameMain.h/.cpp (SE handle 追加 + 版数)
+- Project2/GameSceneMain.h/.cpp (SCENE_BOARD_SIZE enum + sceneTable + tryAbortMidGame/rbDrawAbortGuide 実装 + 揺れ動き撤去 + DeleteSoundMem)
+- Project2/Game1/2/3Scene.cpp (中断機能 + SE 置換)
+- Project2/OptionsScene.cpp (labels 整理 + 分離 + 5 行目遷移化 + プレビュー撤去)
+- Project2/MenuScene.cpp (版数)
+- Project2/BoardSizeScene.cpp/.h (新規)
+- Project2/Project2.vcxproj / .vcxproj.filters (新規ファイル登録)
+- CHANGELOG.md / CLAUDE.md (1.6.1 セクション + 履歴)
+
+**バージョン**: 機能追加 (中断機能) + 不具合修正 (BGM 再開始 + 揺れ動き + OPTIONS レイアウト) で挙動変化伴うため **PATCH バンプ 1.6.0 → 1.6.1**
+
+**実装パターン**: 5 段階ビルド検証 (各段階で Debug|Win32 リビルド警告 0/エラー 0 確認) で安全に積み上げ:
+1. 共通ヘルパ追加 (`tryAbortMidGame` / `rbDrawAbortGuide` / `g_rankUpSeHandle`) + 揺れ動き撤去 + GameRelease 拡張
+2. Game1/2/3Scene の中断機能 + SE 置換
+3. BoardSizeScene 新規追加 (vcxproj + enum + sceneTable)
+4. OptionsScene 整理 (labels 整理 + 分離 + 5 行目遷移化)
+5. CHANGELOG + CLAUDE.md 更新 + 版数バンプ + 全 4 構成リビルド
+
+**留意点**:
+- ゲームロジック (rbPutPiece / rbIsPass / rbThinkCpu/rbThinkRandom / rbCheckResult / rbCountPieces / rbRemovePieces / 思考テーブル / 状態遷移) は **完全に挙動不変**
+- ランクシステム本体 (XP 計算 / ティア判定 / 演出フレーム長) も完全不変、SE 再生方式と段階 2 のオフセットのみ変更
+- 1.6.0 形式の settings.ini はそのまま使用可能、変更なし
+- Q キーは MS-IME がオフの状態で動作 (CheckHitKey の仕様)、対局中の文字入力は Game3 NAME_ENTRY phase 以外存在しないため通常使用で問題なし
+
+**検証**: 全 4 構成リビルド (Debug|Win32 / Release|Win32 / Debug|x64 / Release|x64) いずれも警告 0 / エラー 0
+
+### 1.6.2 ホットフィックス: X キー連鎖 + SE 二重再生 + Game2 ガイド被り (完了, 2026-06-27, 1.6.2)
+
+1.6.1 リリース直後のユーザープレイテストで発覚した 3 件の不具合を集中修正。Ultracode Workflow による敵対的検証で潜在 HIGH バグも同時発見・解消。
+
+**(1) X キー押しっぱなしによるシーン連鎖** (ユーザー報告: 「盤面設定→OPTIONS→そのままタイトルに連鎖」):
+
+- 原因: `CheckHitKey(KEY_INPUT_X) == 1` は押下中ずっと真を返す level-detect、`changeScene` 遷移後の新シーンが残圧 X を拾って再遷移
+- Workflow による全コードベース検出で計 **12 箇所** の X キー連鎖サイトを網羅 (BoardSizeScene/OptionsScene/Game1/2/3 の FINISHED + RANK_UP + DEMOTED + NAME_ENTRY)
+- 共通ヘルパ `isXKeyJustPressed()` ([GameSceneMain.h](Project2/GameSceneMain.h) extern + [GameSceneMain.cpp](Project2/GameSceneMain.cpp) 実装) を追加: 関数内 `static int prevX` で前フレーム保持してエッジ検出。`tryAbortMidGame` の `prevQ` と同方式
+- 12 箇所すべて `CheckHitKey(KEY_INPUT_X) == 1` → `isXKeyJustPressed()` に置換
+- **同時解消した潜在 HIGH バグ**: 1.6.0 から残存していた「RANK_UP/DEMOTED 演出を X でスキップ → 次フレーム FINISHED で X 残圧 → MENU 即落ち」連鎖 (Game1/2/3 全 6 箇所)。1.6.0/1.6.1 ではこれが「演出スキップと同時にメニューへ落ちる」体感バグとして残っていた
+
+**(2) ランクアップ演出時の音楽二重再生** (ユーザー報告: 「音楽が二重に流れている」):
+
+- 原因: 1.6.1 で `LoadSoundMem("res/loop_68.wav")` + `PlaySoundMem(g_rankUpSeHandle, DX_PLAYTYPE_BACK)` で SE 化したが、`loop_68.wav` は数分の長尺 BGM を流用しているため `DX_PLAYTYPE_BACK` のまま放置で BGM と長時間並走
+- 修正: 各 Game シーンの RANK_UP 終了タイミング (240f / PAD_INPUT_1 / X スキップ) で `StopSoundMem(g_rankUpSeHandle)` を呼び SE 即停止 → 演出継続中 (最大 4 秒) のみ SE 再生、終了で停止
+- 3 シーン (Game1/2/3) の RANK_UP case で 1 行ずつ追加、DEMOTED は元から SE 再生なしのため不変
+
+**(3) Game2 ラウンド 1 予告文と「Q: 中断」ガイドの被り** (ユーザースクリーンショット指摘):
+
+- 原因: ラウンド 1 終了予告文 (`PANEL_END_MSG_Y=410` から 3 行 font 40、Y=410..530) と「Q: 中断」ガイド (font 28、Y=420..448) が完全に重なって読めない
+- 修正: `rbDrawAbortGuide` シグネチャに `int guideY = 420` (デフォルト引数) を追加、Game2 の `renderGame2Scene` で `(status == FINISHED && CurrentRound == FIRST) ? 350 : 420` で Round 1 FINISHED 時のみ Y=350 に切替 (Round 表示 Y=240+40=280 と finish msg 開始 Y=410 の間、双方と 30px gap 確保)
+- Game1/Game3 と Game2 Round 2 以降は従来通り Y=420
+
+**変更ファイル一覧**: 8 ファイル
+- Project2/GameMain.cpp (タイトル 1.6.2)
+- Project2/GameSceneMain.h (isXKeyJustPressed prototype + rbDrawAbortGuide デフォルト引数)
+- Project2/GameSceneMain.cpp (isXKeyJustPressed 実装 + rbDrawAbortGuide guideY 反映)
+- Project2/BoardSizeScene.cpp (X 1 箇所)
+- Project2/OptionsScene.cpp (X 1 箇所)
+- Project2/Game1Scene.cpp (X 3 箇所 + RANK_UP StopSoundMem)
+- Project2/Game2Scene.cpp (X 3 箇所 + RANK_UP StopSoundMem + abortGuideY 条件)
+- Project2/Game3Scene.cpp (X 4 箇所 + RANK_UP StopSoundMem)
+- Project2/MenuScene.cpp (版数 1.6.2)
+- CHANGELOG.md / CLAUDE.md (1.6.2 セクション + 履歴)
+
+**バージョン**: 挙動変化を伴う不具合修正 (X 連鎖 / SE 二重 / レイアウト被り) のため **PATCH バンプ 1.6.1 → 1.6.2** (CLAUDE.md §1 採番ルール準拠)
+
+**留意点**:
+- ゲームロジック / XP 計算 / ティア判定 / 演出フレーム長は完全不変
+- settings.ini フォーマット / リソースファイル (.wav/.png) も完全不変
+- `g_rankUpSeHandle` は引き続き `loop_68.wav` を流用、再生時間制限のみで根本の音色重複は将来課題 (専用 SE wav 追加で根本対策可能)
+- Workflow による検証で「中断キーは Q もエッジ検出済」「PAD_INPUT_1 は EdgeInput 経由で既にエッジ」「KEY_INPUT_RETURN/R は連鎖リスク LOW」と整合性確認
 
 **検証**: 全 4 構成リビルド (Debug|Win32 / Release|Win32 / Debug|x64 / Release|x64) いずれも警告 0 / エラー 0
 

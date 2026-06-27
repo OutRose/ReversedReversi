@@ -34,6 +34,10 @@ static int			rankUpFrame		= 0;
 static bool			xpApplied		= false;
 static bool			undoUsedInMatch	= false;	//1.6.0 で追加、R キー押下時に true、initGame3Scene で false リセット
 
+//1.6.1 で追加 (項目 4 中断機能): Q キー 2 段階確認タイマー
+//NAME_ENTRY phase 中は Q が名前入力対象 (KeyInputSingleCharString) なので active=false で無効化
+static int			abortConfirmTimer	= 0;
+
 //外部定義 (GameMain.cpp にて宣言、Game3 で入力 → Game3 対局画面で表示)
 extern int Input, EdgeInput;
 extern char nameTmp[12];
@@ -65,6 +69,9 @@ BOOL initGame3Scene(void)
 	xpApplied		= false;
 	undoUsedInMatch	= false;
 
+	//1.6.1 中断確認タイマーリセット (NAME_ENTRY 中は無効化されているがリセットは念のため)
+	abortConfirmTimer	= 0;
+
 	//フォント設定 (init で 1 回、move/render では呼ばない)
 	ChangeFont("ＭＳ 明朝");
 
@@ -80,6 +87,17 @@ BOOL initGame3Scene(void)
 //	フレーム処理 (1 フレーム分の状態遷移のみ、フレーム駆動モデル)
 void moveGame3Scene()
 {
+	//1.6.1: 対局中の Q キー中断機能 (PHASE_PLAYING + PLAYING/TURN_MSG/PASS_MSG 中のみ active)
+	//NAME_ENTRY 中は Q が名前入力対象 (KeyInputSingleCharString) なので無効化、X キー復帰の通常経路を使う
+	//FINISHED/RANK_UP/DEMOTED 中も非アクティブ (X キー復帰)
+	bool abortActive = (phase == GAME3_PHASE_PLAYING) &&
+		(status == GAME_STATUS_PLAYING || status == GAME_STATUS_TURN_MSG || status == GAME_STATUS_PASS_MSG);
+	if (tryAbortMidGame(&abortConfirmTimer, abortActive))
+	{
+		changeScene(SCENE_MENU);
+		return;
+	}
+
 	switch (phase)
 	{
 	case GAME3_PHASE_NAME_ENTRY:
@@ -89,7 +107,8 @@ void moveGame3Scene()
 		{
 			phase = GAME3_PHASE_PLAYING;
 		}
-		if (CheckHitKey(KEY_INPUT_X) == 1) changeScene(SCENE_MENU);
+		//1.6.1 polish: isXKeyJustPressed でエッジ検出、押しっぱなしでの誤動作を防止 (NAME_ENTRY 中の対称性確保)
+		if (isXKeyJustPressed()) changeScene(SCENE_MENU);
 		break;
 
 	case GAME3_PHASE_PLAYING:
@@ -161,7 +180,8 @@ void moveGame3Scene()
 					if (resultNewTier > resultOldTier) {
 						status = GAME_STATUS_RANK_UP;
 						rankUpFrame = 0;
-						PlaySoundFile("res/loop_68.wav", DX_PLAYTYPE_BACK);
+						//1.6.1: SE 専用ハンドル経由で再生 (BGM = loop_95.wav LOOP と別チャンネル、BGM 維持)
+						if (g_rankUpSeHandle != -1) PlaySoundMem(g_rankUpSeHandle, DX_PLAYTYPE_BACK);
 					}
 					else if (resultNewTier < resultOldTier) {
 						status = GAME_STATUS_DEMOTED;
@@ -188,19 +208,22 @@ void moveGame3Scene()
 
 		case GAME_STATUS_FINISHED:
 			//X キーでメニュー復帰 (Game1/Game2 と同じ TwistTimeStopper 流)
-			if (CheckHitKey(KEY_INPUT_X) == 1) changeScene(SCENE_MENU);
+			//1.6.1 polish: isXKeyJustPressed でエッジ検出、RANK_UP/DEMOTED スキップからの連鎖を防止
+			if (isXKeyJustPressed()) changeScene(SCENE_MENU);
 			break;
 
 		case GAME_STATUS_RANK_UP:	//1.6.0 ランクアップ演出
 			rankUpFrame++;
-			if (rankUpFrame >= RANK_UP_DURATION_FRAMES || (EdgeInput & PAD_INPUT_1) || CheckHitKey(KEY_INPUT_X) == 1) {
+			if (rankUpFrame >= RANK_UP_DURATION_FRAMES || (EdgeInput & PAD_INPUT_1) || isXKeyJustPressed()) {
 				status = GAME_STATUS_FINISHED;
+				//1.6.1 polish: SE (loop_68.wav) を停止 → BGM (loop_95.wav LOOP) との二重再生を解消
+				if (g_rankUpSeHandle != -1) StopSoundMem(g_rankUpSeHandle);
 			}
 			break;
 
 		case GAME_STATUS_DEMOTED:	//1.6.0 降格演出
 			rankUpFrame++;
-			if (rankUpFrame >= DEMOTE_DURATION_FRAMES || (EdgeInput & PAD_INPUT_1) || CheckHitKey(KEY_INPUT_X) == 1) {
+			if (rankUpFrame >= DEMOTE_DURATION_FRAMES || (EdgeInput & PAD_INPUT_1) || isXKeyJustPressed()) {
 				status = GAME_STATUS_FINISHED;
 			}
 			break;
@@ -301,6 +324,12 @@ void renderGame3Scene(void)
 		else if (status == GAME_STATUS_DEMOTED)
 		{
 			rbDrawDemoteAnimation(rankUpFrame, resultOldTier, resultNewTier);
+		}
+
+		//1.6.1: 中断ガイド (PLAYING/TURN_MSG/PASS_MSG 中のみ active) + 確認モード中央オーバーレイ
+		{
+			bool abortActive = (status == GAME_STATUS_PLAYING || status == GAME_STATUS_TURN_MSG || status == GAME_STATUS_PASS_MSG);
+			rbDrawAbortGuide(abortConfirmTimer, abortActive);
 		}
 		break;
 	}

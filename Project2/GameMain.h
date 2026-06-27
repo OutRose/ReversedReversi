@@ -69,6 +69,11 @@ extern const char* TIER_NAMES[TIER_COUNT];           //"NOVICE" .. "ETERNAL"
 extern const int   TIER_THRESHOLDS[TIER_COUNT];      //各ティア到達 XP 閾値
 extern const unsigned int TIER_COLORS[TIER_COUNT];   //各ティア色 (ColorIron .. ColorAmethyst)
 
+//ランクアップ SE 専用ハンドル (1.6.1 で追加、BGM と別チャンネルで SE 再生して BGM 中断を防止)
+//WinMain で LoadSoundMem("res/loop_68.wav") → 各 Game シーンの RANK_UP 突入時に PlaySoundMem
+//GameRelease で DeleteSoundMem、-1 = 未ロード/ロード失敗 (呼出側で != -1 ガード必須)
+extern int g_rankUpSeHandle;
+
 //画面設定 (WinMain で SetGraphMode に渡す)
 //1.5.9 で 800×700 → 1280×768 に拡張 (1.6× / 1.097×、Windows DPI 125% 1080p ディスプレイでも収まる)
 //Y 方向は控えめ拡張 (タイトルバー + タスクバー差し引いた可視領域に収まる優先)
