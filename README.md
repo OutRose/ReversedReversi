@@ -157,7 +157,7 @@ DxLib path is consolidated in [Project2/Common.props](Project2/Common.props) —
 
 The game itself is distributed under the **[MIT License](LICENSE.md)** — Copyright (c) 2026 OutRose.
 
-This software uses the third-party **[DxLib](https://dxlib.xsrv.jp/)** library by Naoki Yamada. Binary redistributions must include the DxLib copyright notice and license terms. See the "Third-Party Licenses" section at the end of [LICENSE.md](LICENSE.md) and the DxLib official site for details.
+This software uses the third-party **[DxLib](https://dxlib.xsrv.jp/)** library by Takumi Yamada. Binary redistributions must include the DxLib copyright notice and license terms. See the "Third-Party Licenses" section at the end of [LICENSE.md](LICENSE.md) and the DxLib official site for details.
 
 ## Documentation
 
@@ -168,5 +168,5 @@ This software uses the third-party **[DxLib](https://dxlib.xsrv.jp/)** library b
 ## Credits
 
 - **Game implementation**: OutRose
-- **Library**: [DxLib](https://dxlib.xsrv.jp/) 3.24f by Naoki Yamada
+- **Library**: [DxLib](https://dxlib.xsrv.jp/) 3.24f by Takumi Yamada
 - **BGM**: hitoshi & ambnience ([Senses Circuit](https://www.senses-circuit.com/))

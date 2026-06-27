@@ -7,10 +7,15 @@
 //1〜4 は ON/OFF トグル、5 は 4 段階サイズ循環 (6/8/10/12)
 //変更時に即 settings.ini に保存 (saveOptions 呼出)、メニュー復帰は X キー
 
-#define OPTION_COUNT 5	//1.5.8 で 4 → 5 (盤面サイズ追加)
+#define OPTION_COUNT 6	//1.5.8 で 4 → 5 (盤面サイズ追加)、1.6.0 で 5 → 6 (ランクをリセット追加)
 
 //ファイルスコープ static (シーン入場時に init で初期化)
 static int selected = 0;	//現在選択中のオプションインデックス 0..OPTION_COUNT-1
+
+//1.6.0: ランクリセット確認用タイマー (180f 以内に Enter 2 回目で確定、それ以外で解除)
+//Enter 1 回目で 180 セット、毎フレーム --、0 になるとリセット確認モード解除
+static int resetConfirmTimer = 0;
+static int resetCompleteTimer = 0;	//リセット完了メッセージ表示残フレーム (60f)
 
 //外部定義 (GameMain.cpp にて宣言)
 extern int Input, EdgeInput;
@@ -93,19 +98,27 @@ static void renderBoardPreview(int boardSize)
 BOOL initOptionsScene(void)
 {
 	selected = 0;	//常に先頭から
+	//1.6.0: リセット確認/完了タイマーもクリア (再入場時に前回状態が残らないように)
+	resetConfirmTimer = 0;
+	resetCompleteTimer = 0;
 	ChangeFont("ＭＳ 明朝");
 	return TRUE;
 }
 
-//フレーム処理 (キー入力でカーソル移動 / トグル反転 / サイズ変更 / メニュー復帰)
+//フレーム処理 (キー入力でカーソル移動 / トグル反転 / サイズ変更 / ランクリセット / メニュー復帰)
 void moveOptionsScene()
 {
+	//1.6.0: リセット確認/完了タイマーの減衰
+	if (resetConfirmTimer > 0) resetConfirmTimer--;
+	if (resetCompleteTimer > 0) resetCompleteTimer--;
+
 	//上下キーで選択項目移動 (リング状)
-	if (EdgeInput & PAD_INPUT_UP)   selected = (selected + OPTION_COUNT - 1) % OPTION_COUNT;
-	if (EdgeInput & PAD_INPUT_DOWN) selected = (selected + 1) % OPTION_COUNT;
+	//1.6.0: 項目移動で確認モード解除 (誤操作防止)
+	if (EdgeInput & PAD_INPUT_UP)   { selected = (selected + OPTION_COUNT - 1) % OPTION_COUNT; resetConfirmTimer = 0; }
+	if (EdgeInput & PAD_INPUT_DOWN) { selected = (selected + 1) % OPTION_COUNT; resetConfirmTimer = 0; }
 
 	//Enter / Space / ボタン 1 で選択中項目を変更 + settings.ini に即保存
-	//1〜4 行目: ON/OFF トグル反転、5 行目 (盤面サイズ): 次のサイズへ循環
+	//1〜4 行目: ON/OFF トグル反転、5 行目 (盤面サイズ): 次のサイズへ循環、6 行目 (ランクリセット): 2 連打で確定 (1.6.0)
 	if (EdgeInput & PAD_INPUT_1)
 	{
 		if (selected < 4)
@@ -117,13 +130,34 @@ void moveOptionsScene()
 				&g_game3Options.allowUndo,
 			};
 			*targets[selected] = !*targets[selected];
+			saveOptions();
 		}
-		else
+		else if (selected == 4)
 		{
 			//盤面サイズ行: 次のサイズへ (12 → 10 → 8 → 6 → 12 → ...)
 			g_game3Options.boardSize = cycleBoardSize(g_game3Options.boardSize, -1);
+			saveOptions();
 		}
-		saveOptions();
+		else if (selected == 5)
+		{
+			//1.6.0: ランクリセット行
+			if (resetConfirmTimer > 0)
+			{
+				//2 回目 Enter (180f 以内) → リセット実行
+				g_playerStats.totalXp     = 0;
+				g_playerStats.currentTier = 0;
+				g_playerStats.totalGames  = 0;
+				g_playerStats.totalWins   = 0;
+				saveOptions();
+				resetConfirmTimer = 0;
+				resetCompleteTimer = 60;	//「リセット完了」を 60f 表示
+			}
+			else
+			{
+				//1 回目 Enter → 確認モードに入る (180f = 3 秒)
+				resetConfirmTimer = 180;
+			}
+		}
 	}
 
 	//左右キーで盤面サイズ変更 (5 行目選択時のみ有効、1.5.8 で導入)
@@ -165,6 +199,7 @@ void renderOptionsScene(void)
 		"弱いCPU         ",
 		"待った機能      ",
 		"盤面サイズ       ",	//1.5.8 で追加
+		"ランクをリセット ",	//1.6.0 で追加 (Enter 2 連打で確定、B2 ランクシステム)
 	};
 
 	int x = 130, y = 140, gapY = 70;
@@ -183,10 +218,16 @@ void renderOptionsScene(void)
 			};
 			DrawFormatString(x, y, color, "%s%s", labels[i], values[i] ? "[ ON ]" : "[ OFF ]");
 		}
-		else
+		else if (i == 4)
 		{
 			//5 行目: 現在の盤面サイズ表示
 			DrawFormatString(x, y, color, "%s%d×%d", labels[i], g_game3Options.boardSize, g_game3Options.boardSize);
+		}
+		else if (i == 5)
+		{
+			//6 行目: ランクリセット (現在ティア + 累積 XP を表示)
+			DrawFormatString(x, y, color, "%s[%s %d XP]",
+				labels[i], getTierName(g_playerStats.currentTier), g_playerStats.totalXp);
 		}
 	}
 
@@ -194,9 +235,24 @@ void renderOptionsScene(void)
 	renderBoardPreview(g_game3Options.boardSize);
 
 	//操作ガイド (1.5.8 で 3 行 → 4 行に拡張、768px 化で y=570, フォント 28 で 4×28=112 ends 682)
+	//1.6.0 polish: リセット確認/完了モード中は操作ガイドを一時的に置き換えて表示 (同じ画面領域を使う定石パターン、レイアウト衝突ゼロ)
 	int oldFontSize = GetFontSize();
 	SetFontSize(28);
-	DrawString(130, 570, "↑↓: 選択\nEnter/Space: ON/OFF・サイズ循環\n←→: サイズ変更 (5 行目)\nX: 戻る", ColorSky);
+	if (resetConfirmTimer > 0)
+	{
+		//確認モード中: 操作ガイドを隠してリセット確認文言を ColorWarn で表示
+		DrawString(130, 570, "本当にリセットしますか?\nもう一度 Enter で確定\n他のキーでキャンセル", ColorWarn);
+	}
+	else if (resetCompleteTimer > 0)
+	{
+		//完了直後: 操作ガイドを隠して完了メッセージを ColorSuccess で 60f 表示
+		DrawString(130, 570, "リセット完了!", ColorSuccess);
+	}
+	else
+	{
+		//通常時: 操作ガイド (4 行)
+		DrawString(130, 570, "↑↓: 選択\nEnter/Space: ON/OFF・サイズ循環\n←→: サイズ変更 (5 行目)\nX: 戻る", ColorSky);
+	}
 	SetFontSize(oldFontSize);
 }
 

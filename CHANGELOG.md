@@ -14,6 +14,60 @@
 
 ---
 
+## [1.6.0] - 2026-06-27
+
+### Added
+
+- **B2 プレイヤーランクシステム実装** — CLAUDE.md §10 将来予定 (プロジェクト全体の拡張) 項目 1 の本実装。1.5.6.1 (B3 7 色) → 1.5.9.1 (B2 準備 +10 色) と伏線を回収して計 10 ランク色がすべて活用される
+  - **10 ティアシステム**: NOVICE → APPRENTICE → ADEPT → EXPERT → MASTER → GRANDMASTER → SAGE → LEGEND → MYTHIC → ETERNAL ([GameMain.cpp `TIER_NAMES`](Project2/GameMain.cpp))
+  - **累積 XP 閾値**: 0 / 50 / 150 / 350 / 700 / 1200 / 2000 / 3200 / 5000 / 8000 ([`TIER_THRESHOLDS`](Project2/GameMain.cpp))
+  - **ティア色**: ColorIron / Bronze / Silver / Gold / Platinum / Diamond / Emerald / Ruby / Sapphire / Amethyst の 10 ランク色を順番に割当 ([`TIER_COLORS`](Project2/GameMain.cpp))
+  - **XP 計算式** ([GameSceneMain.cpp `calcXpGain`](Project2/GameSceneMain.cpp)): 勝=30+コマ差(上限+30)+短手数+10+完封+15 / 引分=15 / 負=10、モード倍率 Game1=×1.0 / Game2=×1.4 / Game3=×0.6、Game3 オプションペナルティ (ヒント/取得数/弱CPU/待った の ON 数 × 0.1 を 1.0 から減算してさらに乗算)
+  - **全モード降格** ([GameSceneMain.cpp `applyXpAndCheck`](Project2/GameSceneMain.cpp)): 敗北時に「降格圧力」 5 + currentTier*2 XP を加算後の totalXp から減算、現ティア閾値 - DEMOTE_BUFFER_XP (50) を下回ったら 1 ティア降格 (Game1/Game2/Game3 すべて、ユーザー指示で案 B Game3 保護を撤回)
+  - **多段ランクアップ演出** 240f アニメ ([GameSceneMain.cpp `rbDrawRankUpAnimation`](Project2/GameSceneMain.cpp)): (1) 0-30f 半透明オーバーレイフェードイン + 効果音 res/loop_68.wav 流用、(2) 30-90f 中央 (640,384) にランク章を半径 10→120px でスケールアップ + 回転、(3) 90-180f ティア名を 1 文字 12f ずつフェードイン、(4) 180-240f NEW RANK! を 10f 周期で点滅。X キーまたはボタン 1 でスキップ可
+  - **降格演出** 120f アニメ ([GameSceneMain.cpp `rbDrawDemoteAnimation`](Project2/GameSceneMain.cpp)): (1) 0-30f 赤フラッシュ、(2) 30-90f DEMOTED... 表示、(3) 90-120f 新ティア章。スキップ可
+  - **MenuScene 右上にランク章 + 進捗バー + 次閾値 XP 表示** ([MenuScene.cpp](Project2/MenuScene.cpp)): 中心 (1080,80) 半径 32 のランク章 + ティア名 (フォント 28、ティア色) + 進捗バー 200×12px (背景 ColorOverlay + 進捗 ColorSuccess) + 「次まで N XP」(フォント 18)。ETERNAL 到達時は ColorAccent 満タン + 「MAX TIER」表示
+  - **対局画面右パネル下部に小ランク章** ([GameSceneMain.cpp `rbDrawRankBadgeSmall`](Project2/GameSceneMain.cpp)): 半径 24 + ティア名フォント 22、Game1/Game2/Game3 すべてで Y=480 に表示 (FINISHED/RANK_UP/DEMOTED 中はオーバーレイで隠れるので非表示)
+  - **終局時 XP オーバーレイ** ([GameSceneMain.cpp `rbDrawResultOverlay`](Project2/GameSceneMain.cpp)): 「+47 XP」をティア色フォント 48 で中央 (640,350)、「TOTAL: 423 / NEXT: 277 XP」をフォント 28 で (640,410)。ETERNAL 到達時は「TOTAL: ... / MAX TIER」表示
+  - **新規 GAME_STATUS 拡張** ([GameSceneMain.h](Project2/GameSceneMain.h)): `GAME_STATUS_RANK_UP` (=5) / `GAME_STATUS_DEMOTED` (=6) を追加、FINISHED 後に状態遷移してフルスクリーン演出を担当
+  - **永続化 settings.ini 拡張 4 キー追加** ([GameMain.cpp `loadOptions`/`saveOptions`](Project2/GameMain.cpp)): totalXp / currentTier / totalGames / totalWins。1.5.x 形式の settings.ini は完全互換で読込可能 (新 4 キー不在時は 0 初期値で NOVICE 起動)
+  - **OptionsScene 6 行目「ランクをリセット」追加** ([OptionsScene.cpp](Project2/OptionsScene.cpp)): OPTION_COUNT 5→6、Enter 1 回目で 180f 確認モード「もう一度 Enter で確定」(ColorWarn)、2 回目で全リセット → 「リセット完了!」を 60f 表示 (ColorSuccess)。180f 経過 or 別項目移動で確認モード解除 (誤操作防止)
+  - **ReversiBoard に 2 フィールド追加** ([GameSceneMain.h](Project2/GameSceneMain.h)): `moveCount` (rbPutPiece の put_flag=true 確定時に ++、XP 短手数ボーナス判定用) / `passCount` (将来の「パスなし勝利」フック、本リリースでは未使用ヘッドルーム)
+  - **Game3 専用カウンタ** ([Game3Scene.cpp](Project2/Game3Scene.cpp)): `undoUsedInMatch` ファイルスコープ static、R キー押下時に true、initGame3Scene で false リセット、XP 計算で g3Undo=true 扱い (ペナルティ ×0.9)
+  - **新規定数** ([GameMain.h](Project2/GameMain.h)): `TIER_COUNT=10` / `MAX_XP=99999` / `RANK_UP_DURATION_FRAMES=240` / `DEMOTE_DURATION_FRAMES=120` / `DEMOTE_BUFFER_XP=50` / `MODE_GAME1/2/3`
+  - **PlayerStats 構造体** ([GameMain.h](Project2/GameMain.h)): totalXp / currentTier / totalGames / totalWins、グローバル `g_playerStats` で全シーン参照
+
+### Changed
+
+- ウィンドウタイトル `Reverse Reversi 1.5.9.2` → `Reverse Reversi 1.6.0` ([GameMain.cpp:108](Project2/GameMain.cpp#L108))
+- メニュー版数表示 `まきもどリバーシ Ver 1.5.9.2` → `Ver 1.6.0` ([MenuScene.cpp:67](Project2/MenuScene.cpp#L67))
+- saveOptions の settings.ini コメント行に「1.6.0 で B2 ランク 4 キー追加」記述追加 ([GameMain.cpp](Project2/GameMain.cpp))
+- **バージョン採番ルール (CLAUDE.md §1) を実質的に更新**: MINOR バンプを「リファクタリングフェーズ転換」のみに限定せず、ランクシステムのような大型機能リリースもフェーズ転換相当として MINOR バンプを採用 (フェーズ ε = 1.6.x 扱い、ユーザー指示)
+
+### Fixed
+
+- **DXライブラリ著者名の英字表記誤記修正**: [LICENSE.md](LICENSE.md) と [README.md](README.md) 計 3 箇所で山田 巧 氏の英字表記が `Naoki Yamada` と誤記されていたのを正しく `Takumi Yamada` に修正 (ユーザー指摘)
+- **終局時 XP オーバーレイの重なり修正** ([GameSceneMain.cpp `rbDrawResultOverlay`](Project2/GameSceneMain.cpp)): 1.6.0 初期実装で「+XP」(中心 X=640, font 48) と「TOTAL/NEXT」(中心 X=640, font 28) が右パネル要素 (PANEL_X=745 以降の「Xキーでメニュー / ESCで終了」など) と被って読めなくなっていた問題を修正。半透明黒背景の枠 (盤面エリア内、X=100..630, Y=310..460) を追加し、テキストを枠中心 X=365 (= 盤面中心) に再配置。右パネルと完全に分離し、盤面コマとの被りも半透明背景で軽減
+- **MenuScene のランク章/ランク名/進捗バー/次閾値 XP の中心軸統一** ([MenuScene.cpp](Project2/MenuScene.cpp)): 1.6.0 初期実装でランク章 (X=1080)、ティア名 (X=1020 左寄せ)、進捗バー (X=1010..1210 中心 1110)、次閾値 XP (X=1010 左寄せ) と中心軸がバラついて視覚的にブレていた問題を修正。すべてを `centerX=1080` 軸に統一、テキスト要素は `GetDrawStringWidth`/`GetDrawFormatStringWidth` で実描画幅を測って中央寄せ、進捗バーも `centerX±100` の対称配置に
+- **OPTIONS リセット確認/完了メッセージの重なり修正** ([OptionsScene.cpp](Project2/OptionsScene.cpp)): 1.6.0 初期実装で確認文言 (X=450, Y=60, font 28) と完了メッセージ (X=500, Y=70, font 32) が画面上部のタイトル「OPTIONS (Game3)」(X=180, Y=40, font 50) と被って読めなくなっていた問題を修正。**操作ガイド (Y=570..682) を確認/完了モード中に一時的に置き換える**定石パターンに変更、同じ画面領域を使うのでレイアウト衝突ゼロ。確認文言は 3 行に拡張して「他のキーでキャンセル」も明示
+
+### Notes
+
+- **後方互換完全**: 1.5.x 形式の settings.ini (showHints/showGain/weakCpu/allowUndo/boardSize の 5 キー) はそのまま読込可能、新 4 キー不在時は g_playerStats = { 0, 0, 0, 0 } のデフォルト初期値で起動 → 初プレイ後に新 9 キー込み形式で自動保存
+- **既存ゲームロジック完全不変**: rbPutPiece の盤面操作・rbIsPass・rbThinkCpu/rbThinkRandom・rbCheckResult・rbCountPieces・rbRemovePieces — `state->moveCount++` の 1 行追加と rbInit での 2 フィールド初期化のみ、本体ロジック変更なし
+- **思考テーブル / Game1/2/3 の状態遷移 / 「待った」機能 / OPTIONS の 5 トグル / 盤面サイズ縮小** — 完全不変
+- **既存リソース流用** (新規 wav 追加なし): ランクアップ演出効果音は既存 res/loop_68.wav (Game2 ラウンド 1 BGM 用) を `DX_PLAYTYPE_BACK` で流用、リポジトリサイズ増加なし
+- **Game2 の XP 計算は Round 2 終了時のみ** (Round 1 は中間状態として扱う、ユーザー指示)
+- **降格バッファ 50 XP**: 閾値直近での頻繁な上下を防ぐ
+- **Game3 オプション全 ON** で mode mult 約 0.36 になり XP 効率最低、「待った」「ヒント」「弱 CPU」フル活用で気楽にプレイ可能 (降格しても新規プレイで挽回可)
+- **Game3 オプション全 OFF** で mult ×0.6 のまま Game1 より低いが、難易度的に Game1 と同等になるため「あえて Game3 で挑戦」プレイヤー向け選択肢
+- **ETERNAL 到達目安**: Game1 標準勝利 30〜50 XP なら 200〜250 試合、Game3 全 ON なら 500 試合程度の長期プレイヤー向け設計
+- **新規シーン追加なし** (OptionsScene 6 行目で完結、SCENE_RANK_DETAIL は不採用)
+- **カラーパレット 20 色フル活用**: 1.5.9.1 で準備した 10 ランク色 (Iron 〜 Amethyst) を TIER_COLORS で 1:1 対応、汎用 UI 色 (ColorSuccess/Error/Warn/Overlay/Accent) も演出 + 進捗バー + リセット確認/完了メッセージで参照
+- **規模**: 11 ファイル修正、新規実装 約 +680 行 (設計時想定 +500 行から +180 行は 8 新規関数 + 4 シーンの状態遷移 + 演出ロジック展開で増えた実装)
+
+---
+
 ## [1.5.9.2] - 2026-06-27
 
 ### Fixed
@@ -558,6 +612,7 @@
 
 ---
 
+[1.6.0]: https://github.com/OutRose/ReversedReversi/releases/tag/v1.6.0
 [1.5.9.2]: https://github.com/OutRose/ReversedReversi/releases/tag/v1.5.9.2
 [1.5.9.1]: https://github.com/OutRose/ReversedReversi/releases/tag/v1.5.9.1
 [1.5.9]: https://github.com/OutRose/ReversedReversi/releases/tag/v1.5.9

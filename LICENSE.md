@@ -26,7 +26,7 @@ SOFTWARE.
 
 本ソフトウェアは以下のサードパーティライブラリを使用しており、それぞれのライセンスに従う必要があります。
 
-### DXライブラリ (DxLib) — 山田 巧 氏 (Naoki Yamada)
+### DXライブラリ (DxLib) — 山田 巧 氏 (Takumi Yamada)
 
 公式サイト: https://dxlib.xsrv.jp/
 

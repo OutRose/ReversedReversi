@@ -18,6 +18,13 @@ static int			excuted				= 0;	//BGM ループ対策用変数 (ラウンド 2 BGM 
 static int			roundTransitWait	= 0;	//ラウンド遷移待ち (240 フレーム = 4 秒、旧 WaitTimer(4000) 相当)
 static int			finishedMsgRand		= 0;	//ラウンド 1 終了メッセージの抽選結果 (1 回固定、γ-1 でフリッカー解消)
 
+//B2 ランクシステム関連 (1.6.0 で追加、Game1 と同方式、Round 2 終了時のみ XP 計算)
+static int			resultXpGained	= 0;
+static int			resultOldTier	= 0;
+static int			resultNewTier	= 0;
+static int			rankUpFrame		= 0;
+static bool			xpApplied		= false;
+
 //外部定義(GameMain.cppにて宣言)
 extern int Input, EdgeInput;
 
@@ -33,6 +40,13 @@ BOOL initGame2Scene(void)
 	finishedMsgRand		= 0;
 	rbInit(&state, 12);	//Game2 (まきもどり) は常に 12×12 固定 (1.5.8 で size 引数明示、ラウンド間 96 マス削除前提)
 	rbSetMsg(&state, turn, 0);	//先頭ターンの "BLACK TURN" メッセージをセット
+
+	//1.6.0 ランクシステム状態リセット (再入場時に前回試合の演出が残らないように)
+	resultXpGained	= 0;
+	resultOldTier	= 0;
+	resultNewTier	= 0;
+	rankUpFrame		= 0;
+	xpApplied		= false;
 
 	//フォント設定 (init で 1 回、move/render では呼ばない)
 	ChangeFont("ＭＳ 明朝");
@@ -83,7 +97,32 @@ void moveGame2Scene()
 			}
 		}
 
-		if (rbCheckResult(&state)) status = GAME_STATUS_FINISHED;
+		if (rbCheckResult(&state)) {
+			status = GAME_STATUS_FINISHED;
+			//1.6.0: Round 2 終了時のみ XP 計算 (Round 1 はラウンド遷移として扱う、ユーザー指示)
+			if (CurrentRound == GAME_ROUND_SECOND && !xpApplied) {
+				int pcnum[2]; rbCountPieces(&state, pcnum);
+				bool won = (pcnum[0] > pcnum[1]);
+				int diff = pcnum[0] - pcnum[1]; if (diff < 0) diff = -diff;
+				bool perfect = won && pcnum[1] <= 5;
+				resultXpGained = calcXpGain(MODE_GAME2, won, diff, state.moveCount, perfect,
+					false, false, false, false);
+				applyXpAndCheck(resultXpGained, won, &resultOldTier, &resultNewTier);
+				g_playerStats.totalGames++;
+				if (won) g_playerStats.totalWins++;
+				saveOptions();
+				xpApplied = true;
+				if (resultNewTier > resultOldTier) {
+					status = GAME_STATUS_RANK_UP;
+					rankUpFrame = 0;
+					PlaySoundFile("res/loop_68.wav", DX_PLAYTYPE_BACK);
+				}
+				else if (resultNewTier < resultOldTier) {
+					status = GAME_STATUS_DEMOTED;
+					rankUpFrame = 0;
+				}
+			}
+		}
 		break;
 
 	case GAME_STATUS_TURN_MSG: //TURNメッセージ表示中の場合
@@ -123,6 +162,20 @@ void moveGame2Scene()
 			if (CheckHitKey(KEY_INPUT_X) == 1) changeScene(SCENE_MENU);
 		}
 		break;
+
+	case GAME_STATUS_RANK_UP:	//1.6.0 ランクアップ演出 (240f アニメ、スキップ可)
+		rankUpFrame++;
+		if (rankUpFrame >= RANK_UP_DURATION_FRAMES || (EdgeInput & PAD_INPUT_1) || CheckHitKey(KEY_INPUT_X) == 1) {
+			status = GAME_STATUS_FINISHED;
+		}
+		break;
+
+	case GAME_STATUS_DEMOTED:	//1.6.0 降格演出 (120f アニメ、スキップ可)
+		rankUpFrame++;
+		if (rankUpFrame >= DEMOTE_DURATION_FRAMES || (EdgeInput & PAD_INPUT_1) || CheckHitKey(KEY_INPUT_X) == 1) {
+			status = GAME_STATUS_FINISHED;
+		}
+		break;
 	}
 
 	//ラウンド 2 移行時の BGM 切替 (1 度だけ、excuted フラグで再呼び出し防止)
@@ -155,6 +208,8 @@ void renderGame2Scene(void)
 	if (status == GAME_STATUS_FINISHED && CurrentRound == GAME_ROUND_SECOND)
 	{
 		DrawString(PANEL_X, PANEL_END_MSG_Y, "Xキーで\nメニュー\nESCで終了", ColorWhite);
+		//1.6.0: ラウンド 2 終了時のみ獲得 XP オーバーレイ (Round 1 終了は表示しない)
+		rbDrawResultOverlay(resultXpGained, resultOldTier, resultNewTier);
 	}
 	else if (status == GAME_STATUS_FINISHED && CurrentRound == GAME_ROUND_FIRST)
 	{
@@ -171,6 +226,22 @@ void renderGame2Scene(void)
 		{
 			DrawString(PANEL_X, PANEL_END_MSG_Y, "ノーカウント\nノーカウント\nなんだ…！！", ColorWhite);
 		}
+	}
+
+	//1.6.0: 対局中の右パネル下部に小ランク章を表示 (FINISHED/RANK_UP/DEMOTED 中はオーバーレイで隠れるので非表示、Round 表示の下)
+	if (status == GAME_STATUS_PLAYING || status == GAME_STATUS_TURN_MSG || status == GAME_STATUS_PASS_MSG)
+	{
+		rbDrawRankBadgeSmall(PANEL_X, 480);
+	}
+
+	//1.6.0: ランクアップ/降格演出 (FINISHED の上にフルスクリーンオーバーレイ)
+	if (status == GAME_STATUS_RANK_UP)
+	{
+		rbDrawRankUpAnimation(rankUpFrame, resultOldTier, resultNewTier);
+	}
+	else if (status == GAME_STATUS_DEMOTED)
+	{
+		rbDrawDemoteAnimation(rankUpFrame, resultOldTier, resultNewTier);
 	}
 }
 

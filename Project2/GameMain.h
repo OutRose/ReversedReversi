@@ -40,8 +40,34 @@ extern unsigned int ColorSuccess, ColorError, ColorInfo, ColorAccent;
 //オプション設定の永続化 (1.5.7 で導入、Game3 専用)
 //loadOptions: WinMain で InitGame() 直後に 1 回呼ぶ、settings.ini からの読込み
 //saveOptions: OptionsScene でトグル変更ごとに呼ぶ、settings.ini への書込み
+//1.6.0 で B2 プレイヤーランクシステムの永続化 (totalXp/currentTier/totalGames/totalWins) も同関数経由に統合
 void loadOptions(void);
 void saveOptions(void);
+
+//B2 プレイヤーランクシステム (1.6.0 で導入)
+//PlayerStats: 全モード共通の累積統計、settings.ini に 4 キー (totalXp/currentTier/totalGames/totalWins) で永続化
+typedef struct _PlayerStats {
+	int totalXp;        //累積 XP (0〜MAX_XP、降格圧力で減算もあり 0 下限ガード)
+	int currentTier;    //現在ティア (0=NOVICE 〜 9=ETERNAL、TIER_COUNT-1 上限)
+	int totalGames;     //累計対局数 (Game1/2/3 共通)
+	int totalWins;      //累計勝利数 (引分は勝利に含めない)
+} PlayerStats;
+extern PlayerStats g_playerStats;
+
+//ランクシステム関連定数 (1.6.0 で追加)
+#define TIER_COUNT  10                  //10 段ティア
+#define MAX_XP      99999               //永続化の上限ガード (sscanf_s 検証用)
+#define RANK_UP_DURATION_FRAMES   240   //ランクアップ演出 4 秒
+#define DEMOTE_DURATION_FRAMES    120   //降格演出 2 秒
+#define DEMOTE_BUFFER_XP          50    //降格バッファ (閾値 -50 XP を下回ったら降格)
+#define MODE_GAME1  1                   //ふつう次元
+#define MODE_GAME2  2                   //まきもどり次元 (2 ラウンド制)
+#define MODE_GAME3  3                   //あまちゃん次元
+
+//ティアテーブル (定義は GameMain.cpp、全シーン共通参照)
+extern const char* TIER_NAMES[TIER_COUNT];           //"NOVICE" .. "ETERNAL"
+extern const int   TIER_THRESHOLDS[TIER_COUNT];      //各ティア到達 XP 閾値
+extern const unsigned int TIER_COLORS[TIER_COUNT];   //各ティア色 (ColorIron .. ColorAmethyst)
 
 //画面設定 (WinMain で SetGraphMode に渡す)
 //1.5.9 で 800×700 → 1280×768 に拡張 (1.6× / 1.097×、Windows DPI 125% 1080p ディスプレイでも収まる)

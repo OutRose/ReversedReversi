@@ -52,6 +52,35 @@ unsigned int ColorAccent    = GetColor(255, 130, 200);  //汎用アクセント 
 //1.5.8 で boardSize 追加 (6/8/10/12 の 4 段階、初期 12 = 現状互換)
 ReversiOptions g_game3Options = { true, true, true, true, 12 };
 
+//B2 プレイヤーランクシステム (1.6.0 で導入、全モード共通)
+//初期値: NOVICE / XP 0 / 0 試合 / 0 勝、settings.ini に新 4 キーが無ければこの値で起動 (後方互換)
+PlayerStats g_playerStats = { 0, 0, 0, 0 };
+
+//ティアテーブル (10 段、1.6.0 で導入)
+//名前は冒険感のある英語 NOVICE → ETERNAL の 10 段、Game3 のプレイヤー名 nameTmp とは独立した実力称号
+const char* TIER_NAMES[TIER_COUNT] = {
+	"NOVICE", "APPRENTICE", "ADEPT", "EXPERT", "MASTER",
+	"GRANDMASTER", "SAGE", "LEGEND", "MYTHIC", "ETERNAL"
+};
+//各ティアに到達するための累積 XP 閾値 (Game1 標準勝利 30〜50 XP なら ETERNAL 到達は約 230 勝)
+const int TIER_THRESHOLDS[TIER_COUNT] = {
+	0, 50, 150, 350, 700, 1200, 2000, 3200, 5000, 8000
+};
+//各ティアの色 (1.5.9.1 で追加した 10 ランク色を順番に割当)
+//注: ファイルスコープ初期化は上から下、ColorXxx は本 TU で先に初期化済みなので参照可能
+const unsigned int TIER_COLORS[TIER_COUNT] = {
+	ColorIron,      //0 NOVICE
+	ColorBronze,    //1 APPRENTICE
+	ColorSilver,    //2 ADEPT
+	ColorGold,      //3 EXPERT
+	ColorPlatinum,  //4 MASTER
+	ColorDiamond,   //5 GRANDMASTER
+	ColorEmerald,   //6 SAGE
+	ColorRuby,      //7 LEGEND
+	ColorSapphire,  //8 MYTHIC
+	ColorAmethyst   //9 ETERNAL
+};
+
 //settings.ini からオプション読込 (WinMain で InitGame() 後に呼ぶ、ファイル無ければデフォルト維持)
 void loadOptions(void)
 {
@@ -70,6 +99,23 @@ void loadOptions(void)
 			//1.5.8 で導入。有効値 (6/8/10/12) のみ受理、他はデフォルト 12 維持
 			if (v == 6 || v == 8 || v == 10 || v == 12) g_game3Options.boardSize = v;
 		}
+		//B2 ランクシステム (1.6.0 で導入)、不在時は g_playerStats のデフォルト初期値 (全 0、NOVICE) を維持
+		else if (sscanf_s(line, "totalXp=%d", &v) == 1)
+		{
+			if (v >= 0 && v <= MAX_XP) g_playerStats.totalXp = v;
+		}
+		else if (sscanf_s(line, "currentTier=%d", &v) == 1)
+		{
+			if (v >= 0 && v < TIER_COUNT) g_playerStats.currentTier = v;
+		}
+		else if (sscanf_s(line, "totalGames=%d", &v) == 1)
+		{
+			if (v >= 0) g_playerStats.totalGames = v;
+		}
+		else if (sscanf_s(line, "totalWins=%d", &v) == 1)
+		{
+			if (v >= 0) g_playerStats.totalWins = v;
+		}
 	}
 	fclose(fp);
 }
@@ -79,12 +125,17 @@ void saveOptions(void)
 {
 	FILE* fp = nullptr;
 	if (fopen_s(&fp, "settings.ini", "w") != 0 || !fp) return;
-	fprintf(fp, "# まきもどリバーシ Game3 オプション設定 (1.5.7+、1.5.8 で boardSize 追加)\n");
+	fprintf(fp, "# まきもどリバーシ オプション設定 (1.5.7+、1.5.8 で boardSize 追加、1.6.0 で B2 ランク 4 キー追加)\n");
 	fprintf(fp, "showHints=%d\n", g_game3Options.showHints  ? 1 : 0);
 	fprintf(fp, "showGain=%d\n",  g_game3Options.showGain   ? 1 : 0);
 	fprintf(fp, "weakCpu=%d\n",   g_game3Options.weakCpu    ? 1 : 0);
 	fprintf(fp, "allowUndo=%d\n", g_game3Options.allowUndo  ? 1 : 0);
 	fprintf(fp, "boardSize=%d\n", g_game3Options.boardSize);
+	//B2 ランクシステム (1.6.0)
+	fprintf(fp, "totalXp=%d\n",      g_playerStats.totalXp);
+	fprintf(fp, "currentTier=%d\n",  g_playerStats.currentTier);
+	fprintf(fp, "totalGames=%d\n",   g_playerStats.totalGames);
+	fprintf(fp, "totalWins=%d\n",    g_playerStats.totalWins);
 	fclose(fp);
 }
 
@@ -105,7 +156,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 	SetGraphMode(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_BPP);
 
 	//ウィンドウタイトル
-	SetMainWindowText("Reverse Reversi 1.5.9.2");
+	SetMainWindowText("Reverse Reversi 1.6.0");
 
 	//背景色の設定
 	SetBackgroundColor(0, 0, 0);

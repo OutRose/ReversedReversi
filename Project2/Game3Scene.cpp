@@ -25,6 +25,15 @@ static GAME_STATUS	prevStatus		= GAME_STATUS_TURN_MSG;
 static GAME_TURN	prevTurn		= GAME_TURN_BLACK;
 static bool			undoAvailable	= false;	//true = R で復元可能、開始直後 / undo 直後は false
 
+//B2 ランクシステム関連 (1.6.0 で追加、PLAYING phase の FINISHED 時に XP 計算)
+//undoUsedInMatch: 試合中に「待った」を 1 回でも使ったかフラグ、XP 計算で g3Undo に渡す
+static int			resultXpGained	= 0;
+static int			resultOldTier	= 0;
+static int			resultNewTier	= 0;
+static int			rankUpFrame		= 0;
+static bool			xpApplied		= false;
+static bool			undoUsedInMatch	= false;	//1.6.0 で追加、R キー押下時に true、initGame3Scene で false リセット
+
 //外部定義 (GameMain.cpp にて宣言、Game3 で入力 → Game3 対局画面で表示)
 extern int Input, EdgeInput;
 extern char nameTmp[12];
@@ -47,6 +56,14 @@ BOOL initGame3Scene(void)
 	prevStatus		= GAME_STATUS_TURN_MSG;
 	prevTurn		= GAME_TURN_BLACK;
 	undoAvailable	= false;
+
+	//1.6.0 ランクシステム状態リセット (再入場時に前回試合の演出 + undo 使用フラグが残らないように)
+	resultXpGained	= 0;
+	resultOldTier	= 0;
+	resultNewTier	= 0;
+	rankUpFrame		= 0;
+	xpApplied		= false;
+	undoUsedInMatch	= false;
 
 	//フォント設定 (init で 1 回、move/render では呼ばない)
 	ChangeFont("ＭＳ 明朝");
@@ -84,6 +101,7 @@ void moveGame3Scene()
 			status			= prevStatus;
 			turn			= prevTurn;
 			undoAvailable	= false;	//1 回使ったら次のプレイヤー手まで使えない
+			undoUsedInMatch	= true;	//1.6.0: XP 計算で g3Undo=true 扱いに (mode mult ×0.9 ペナルティ)
 		}
 
 		//対局フェーズ: Game1 と同じ進行、思考テーブルは weakCpu トグルで切替 (1.5.7 で導入)
@@ -124,7 +142,33 @@ void moveGame3Scene()
 				}
 			}
 
-			if (rbCheckResult(&state)) status = GAME_STATUS_FINISHED;
+			if (rbCheckResult(&state)) {
+				status = GAME_STATUS_FINISHED;
+				//1.6.0: 終局時に XP 計算 (Game3 オプションフラグ込み)
+				if (!xpApplied) {
+					int pcnum[2]; rbCountPieces(&state, pcnum);
+					bool won = (pcnum[0] > pcnum[1]);
+					int diff = pcnum[0] - pcnum[1]; if (diff < 0) diff = -diff;
+					bool perfect = won && pcnum[1] <= 5;
+					resultXpGained = calcXpGain(MODE_GAME3, won, diff, state.moveCount, perfect,
+						g_game3Options.showHints, g_game3Options.showGain,
+						g_game3Options.weakCpu, undoUsedInMatch);
+					applyXpAndCheck(resultXpGained, won, &resultOldTier, &resultNewTier);
+					g_playerStats.totalGames++;
+					if (won) g_playerStats.totalWins++;
+					saveOptions();
+					xpApplied = true;
+					if (resultNewTier > resultOldTier) {
+						status = GAME_STATUS_RANK_UP;
+						rankUpFrame = 0;
+						PlaySoundFile("res/loop_68.wav", DX_PLAYTYPE_BACK);
+					}
+					else if (resultNewTier < resultOldTier) {
+						status = GAME_STATUS_DEMOTED;
+						rankUpFrame = 0;
+					}
+				}
+			}
 			break;
 
 		case GAME_STATUS_TURN_MSG:
@@ -145,6 +189,20 @@ void moveGame3Scene()
 		case GAME_STATUS_FINISHED:
 			//X キーでメニュー復帰 (Game1/Game2 と同じ TwistTimeStopper 流)
 			if (CheckHitKey(KEY_INPUT_X) == 1) changeScene(SCENE_MENU);
+			break;
+
+		case GAME_STATUS_RANK_UP:	//1.6.0 ランクアップ演出
+			rankUpFrame++;
+			if (rankUpFrame >= RANK_UP_DURATION_FRAMES || (EdgeInput & PAD_INPUT_1) || CheckHitKey(KEY_INPUT_X) == 1) {
+				status = GAME_STATUS_FINISHED;
+			}
+			break;
+
+		case GAME_STATUS_DEMOTED:	//1.6.0 降格演出
+			rankUpFrame++;
+			if (rankUpFrame >= DEMOTE_DURATION_FRAMES || (EdgeInput & PAD_INPUT_1) || CheckHitKey(KEY_INPUT_X) == 1) {
+				status = GAME_STATUS_FINISHED;
+			}
 			break;
 		}
 		break;
@@ -225,6 +283,24 @@ void renderGame3Scene(void)
 		if (status == GAME_STATUS_FINISHED)
 		{
 			DrawString(PANEL_X, PANEL_END_MSG_Y, "Xキーで\nメニュー\nESCで終了", ColorWhite);
+			//1.6.0: 獲得 XP オーバーレイ (Game3 オプションペナルティ込みの XP を表示)
+			rbDrawResultOverlay(resultXpGained, resultOldTier, resultNewTier);
+		}
+
+		//1.6.0: 対局中の右パネル下部に小ランク章を表示 (FINISHED/RANK_UP/DEMOTED 中はオーバーレイで隠れるので非表示、PLAYER 名 + R: 待った ガイドの下、Y=480)
+		if (status == GAME_STATUS_PLAYING || status == GAME_STATUS_TURN_MSG || status == GAME_STATUS_PASS_MSG)
+		{
+			rbDrawRankBadgeSmall(PANEL_X, 480);
+		}
+
+		//1.6.0: ランクアップ/降格演出 (FINISHED の上にフルスクリーンオーバーレイ)
+		if (status == GAME_STATUS_RANK_UP)
+		{
+			rbDrawRankUpAnimation(rankUpFrame, resultOldTier, resultNewTier);
+		}
+		else if (status == GAME_STATUS_DEMOTED)
+		{
+			rbDrawDemoteAnimation(rankUpFrame, resultOldTier, resultNewTier);
 		}
 		break;
 	}

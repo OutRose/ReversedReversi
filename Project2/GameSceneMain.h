@@ -26,11 +26,14 @@ typedef enum _SCENE_NO {
 
 //ゲーム進行状態 (Game1Scene/Game2Scene 共通、moveXxxScene の status 変数で使用)
 //数値 1 から開始するのは既存実装互換のため (リテラル整数からの段階移行)
+//1.6.0 で B2 ランクシステム導入時に RANK_UP/DEMOTED を拡張、FINISHED 後にランク変動演出用に遷移
 typedef enum _GAME_STATUS {
 	GAME_STATUS_PLAYING = 1,	//プレイ中
 	GAME_STATUS_TURN_MSG,		//TURN メッセージ表示中
 	GAME_STATUS_PASS_MSG,		//PASS メッセージ表示中
-	GAME_STATUS_FINISHED		//ゲーム終了 (Game2 ではラウンド遷移待ち)
+	GAME_STATUS_FINISHED,		//ゲーム終了 (Game2 ではラウンド遷移待ち)
+	GAME_STATUS_RANK_UP,		//1.6.0 で追加、ランクアップ演出中 (240f アニメ後 FINISHED へ戻る)
+	GAME_STATUS_DEMOTED			//1.6.0 で追加、降格演出中 (120f アニメ後 FINISHED へ戻る)
 } GAME_STATUS;
 
 //手番 (Game1Scene/Game2Scene 共通)
@@ -78,6 +81,8 @@ typedef struct _ReversiBoard {
 	int originY;						//有効盤面 Y 原点 (同上)
 	std::string msg;					//メッセージ文字列 ("BLACK TURN" 等)
 	int msg_wait;						//メッセージ表示残フレーム (60FPS で 1 フレーム = 1 カウント)
+	int moveCount;						//1.6.0 で追加。プレイヤー手+CPU 手の累積回数 (rbPutPiece の put_flag=true 確定時に ++)、XP 短手数ボーナス判定用
+	int passCount;						//1.6.0 で追加。累積パス回数 (将来の「パスなし勝利」フック、本リリースでは未参照のヘッドルーム)
 } ReversiBoard;
 
 //盤面初期化 (ゼロクリア + 中央 4 駒配置 + メッセージリセット + サイズメトリクス設定)
@@ -143,5 +148,42 @@ void rbDrawHints(ReversiBoard* state, int turn, bool showGain);
 
 //シーンを変更する関数
 void changeScene(SCENE_NO no);
+
+//=========================================================================
+//B2 プレイヤーランクシステム関連関数 (1.6.0 で追加)
+//=========================================================================
+
+//XP 計算式 (mode=MODE_GAME1/2/3、won=勝利フラグ、pieceDiff=コマ差絶対値、moveCount=ReversiBoard.moveCount)
+//perfect=完封勝利 (相手 ≤5 コマで勝利)、g3*=Game3 オプション値 (mode==MODE_GAME3 以外は無視)
+//戻り値: 加算する XP 値 (0 以上)
+int calcXpGain(int mode, bool won, int pieceDiff, int moveCount, bool perfect,
+	bool g3Hints, bool g3Gain, bool g3Weak, bool g3Undo);
+
+//XP 加算 + ティア再判定 + 演出トリガ判定 (outOldTier/outNewTier に変化前後のティアを返す)
+//won=false の場合は加算後にさらに「降格圧力」(5 + currentTier*2) を減算 (全モード降格、ユーザー指示)
+//降格判定バッファ DEMOTE_BUFFER_XP=50 込みで現ティア閾値を下回ったら -1 ティア
+void applyXpAndCheck(int xpGained, bool won, int* outOldTier, int* outNewTier);
+
+//ランク章描画 (小型、対局画面の右パネル下部用)
+//座標 (x, y) を円中心ではなく左上として、半径 24 のランク章 + ティア名を右にフォント 22 で
+void rbDrawRankBadgeSmall(int x, int y);
+
+//終局時のリザルトオーバーレイ (FINISHED 状態で 60f 表示後 X キーガイド表示)
+//半透明オーバーレイ + 「+XP」ティア色フォント 48 + 「TOTAL/NEXT」フォント 28
+void rbDrawResultOverlay(int xpGained, int oldTier, int newTier);
+
+//ランクアップ演出 (frame 0..RANK_UP_DURATION_FRAMES-1)
+//5 段階: 0-30 オーバーレイフェードイン+効果音 / 30-90 ランク章スケール+回転 / 90-180 ティア名 1 文字ずつ / 180-240 NEW RANK! 点滅
+void rbDrawRankUpAnimation(int frame, int oldTier, int newTier);
+
+//降格演出 (frame 0..DEMOTE_DURATION_FRAMES-1)
+//3 段階: 0-30 赤フラッシュ / 30-90 DEMOTED... 表示 / 90-120 新ティア章
+void rbDrawDemoteAnimation(int frame, int oldTier, int newTier);
+
+//ティア名取得 (tier=0..TIER_COUNT-1、範囲外なら "?" を返す)
+const char* getTierName(int tier);
+
+//ティア色取得 (tier=0..TIER_COUNT-1、範囲外なら ColorWhite を返す)
+unsigned int getTierColor(int tier);
 
 #endif

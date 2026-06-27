@@ -1,6 +1,8 @@
 ﻿#include "GameSceneMain.h"
 #include <assert.h>		//changeScene 範囲外チェックのアサート用 (Debug ビルドでのみ発火)
 #include <stdlib.h>		//rb* 関数で GetRand と組み合わせ + 将来の汎用ユーティリティ用
+#include <math.h>		//1.6.0 ランクアップ演出の sinf/cosf (回転アニメ) 用、cmath ではなく C 互換ヘッダで統一
+#include <string.h>		//1.6.0 ランク演出で strlen (ティア名長取得) 用
 
 //全てのシーンのヘッダファイルをインクルードする
 #include "Game1Scene.h"
@@ -181,6 +183,9 @@ void rbInit(ReversiBoard* state, int size) {
 	state->board[centerLow ][centerHigh] = GAME_TURN_WHITE;
 	state->msg.clear();
 	state->msg_wait = 0;
+	//1.6.0 で追加: ランクシステム用カウンタを初期化 (XP 短手数ボーナス判定 + 将来のパスなし勝利フック用)
+	state->moveCount = 0;
+	state->passCount = 0;
 }
 
 //指定位置にコマを置く (put_flag=false ならシミュレーションのみ、戻り値: 裏返ったコマ数)
@@ -218,7 +223,11 @@ int rbPutPiece(ReversiBoard* state, int x, int y, int turn, bool put_flag) {
 	}
 
 	//1 つでも裏返せて、かつ実際に置く指示なら、置いたマスにコマを書き込む
-	if (sum > 0 && put_flag) state->board[y][x] = turn;
+	if (sum > 0 && put_flag) {
+		state->board[y][x] = turn;
+		//1.6.0: 実際に手が確定したら moveCount をインクリメント (XP 短手数ボーナス判定用)
+		state->moveCount++;
+	}
 
 	return sum;
 }
@@ -495,4 +504,258 @@ void rbDrawHints(ReversiBoard* state, int turn, bool showGain) {
 		//フォントサイズを呼び出し前の値に戻す (後続の rbDrawMsg/CountPanel/TurnIndicator に影響させない)
 		SetFontSize(oldFontSize);
 	}
+}
+
+//=========================================================================
+//B2 プレイヤーランクシステム関連関数 (1.6.0 で追加)
+//=========================================================================
+
+//ティア名取得 (範囲外チェック付き)
+const char* getTierName(int tier)
+{
+	if (tier < 0 || tier >= TIER_COUNT) return "?";
+	return TIER_NAMES[tier];
+}
+
+//ティア色取得 (範囲外チェック付き、不正値は ColorWhite フォールバック)
+unsigned int getTierColor(int tier)
+{
+	if (tier < 0 || tier >= TIER_COUNT) return ColorWhite;
+	return TIER_COLORS[tier];
+}
+
+//XP 計算式 (案 C エンゲージメントベース、Game3 オプションペナルティ付き)
+//勝=30 + コマ差ボーナス上限+30 + 短手数+10 + 完封+15 / 引分=15 / 負=10
+//モード倍率 Game1=×1.0 / Game2=×1.4 / Game3=×0.6
+//Game3 のヒント/取得数/弱 CPU/待った の ON 数 × 0.1 を 1.0 から減算してさらに乗算
+int calcXpGain(int mode, bool won, int pieceDiff, int moveCount, bool perfect,
+	bool g3Hints, bool g3Gain, bool g3Weak, bool g3Undo)
+{
+	int baseXp = 0;
+	if (won) {
+		baseXp = 30;
+		//コマ差ボーナス (上限 +30)
+		int diffBonus = (pieceDiff > 30) ? 30 : pieceDiff;
+		if (diffBonus > 0) baseXp += diffBonus;
+		//短手数ボーナス (12×12 で全 140 マス埋まる、空 10 以上なら +10)
+		int totalCells = BOARD_SIZE * BOARD_SIZE - 4;
+		if ((totalCells - moveCount) >= 10) baseXp += 10;
+		//完封ボーナス (相手 ≤5 コマ)
+		if (perfect) baseXp += 15;
+	}
+	else if (pieceDiff == 0) {
+		baseXp = 15;	//引分 (両者同コマ数)
+	}
+	else {
+		baseXp = 10;	//敗北、最低保証
+	}
+	//モード倍率
+	float mult = (mode == MODE_GAME1) ? 1.0f
+		: (mode == MODE_GAME2) ? 1.4f
+		: 0.6f;	//Game3
+	//Game3 オプションペナルティ (ON 数 × 0.1 を 1.0 から減算してさらに乗算)
+	if (mode == MODE_GAME3) {
+		int onCount = (g3Hints ? 1 : 0) + (g3Gain ? 1 : 0) + (g3Weak ? 1 : 0) + (g3Undo ? 1 : 0);
+		float penalty = 1.0f - onCount * 0.1f;
+		if (penalty < 0.1f) penalty = 0.1f;	//下限ガード (理論上は 0.6 まで)
+		mult *= penalty;
+	}
+	int result = (int)(baseXp * mult);
+	if (result < 0) result = 0;	//念のため下限ガード
+	return result;
+}
+
+//XP 加算 + ティア再判定 + 演出トリガ判定
+void applyXpAndCheck(int xpGained, bool won, int* outOldTier, int* outNewTier)
+{
+	int oldTier = g_playerStats.currentTier;
+	if (outOldTier) *outOldTier = oldTier;
+
+	//XP 加算
+	g_playerStats.totalXp += xpGained;
+	if (g_playerStats.totalXp > MAX_XP) g_playerStats.totalXp = MAX_XP;
+
+	//敗北時の降格圧力 (全モード、5 + tier*2 を減算)
+	if (!won && oldTier > 0) {
+		int pressure = 5 + oldTier * 2;
+		g_playerStats.totalXp -= pressure;
+		if (g_playerStats.totalXp < 0) g_playerStats.totalXp = 0;
+	}
+
+	//昇格判定 (現ティアの次の閾値を超えていれば +1、複数段飛ばし対応)
+	int newTier = oldTier;
+	while (newTier < TIER_COUNT - 1 && g_playerStats.totalXp >= TIER_THRESHOLDS[newTier + 1]) {
+		newTier++;
+	}
+	//降格判定 (現ティア閾値 - DEMOTE_BUFFER_XP を下回ったら -1、複数段降格対応)
+	while (newTier > 0 && g_playerStats.totalXp < TIER_THRESHOLDS[newTier] - DEMOTE_BUFFER_XP) {
+		newTier--;
+	}
+
+	g_playerStats.currentTier = newTier;
+	if (outNewTier) *outNewTier = newTier;
+}
+
+//ランク章描画 (小型、対局画面の右パネル下部用)
+//(x, y) はランク章円の中心ではなく左上座標として扱い、半径 24 の円 + 右にティア名フォント 22
+void rbDrawRankBadgeSmall(int x, int y)
+{
+	int oldFontSize = GetFontSize();
+	int cx = x + 24;	//円中心 X
+	int cy = y + 24;	//円中心 Y
+	unsigned int tierColor = getTierColor(g_playerStats.currentTier);
+	DrawCircle(cx, cy, 24, tierColor, TRUE);
+	DrawCircle(cx, cy, 24, ColorWhite, FALSE);
+	SetFontSize(22);
+	DrawString(x + 56, y + 12, getTierName(g_playerStats.currentTier), tierColor);
+	SetFontSize(oldFontSize);
+}
+
+//終局時のリザルトオーバーレイ (FINISHED 状態で常時表示、半透明背景 + XP 表示)
+//xpGained=今回獲得 XP、oldTier=変動前ティア、newTier=変動後ティア (rankup/demote 判定済み)
+//1.6.0 polish: 盤面エリア (X=5..725) 内に半透明黒背景の枠を描いて、その中に XP テキストを中央配置。
+//右パネル (PANEL_X=745+) と完全に分離、盤面コマとの被りを背景フェードで軽減
+void rbDrawResultOverlay(int xpGained, int oldTier, int newTier)
+{
+	int oldFontSize = GetFontSize();
+	unsigned int tierColor = getTierColor(newTier);
+
+	//半透明黒背景の枠 (盤面エリア内、コマと XP テキストの間に視認性確保のクッション)
+	//盤面中央 X = BOARD_ORIGIN_X + BOARD_TARGET_PX/2 = 365、Y は中央寄り上半分 (BLACK WINS! メッセージ箱 730+ と分離)
+	const int boxX1 = 100, boxY1 = 310, boxX2 = 630, boxY2 = 460;
+	SetDrawBlendMode(DX_BLENDMODE_ALPHA, 200);
+	DrawBox(boxX1, boxY1, boxX2, boxY2, GetColor(20, 20, 20), TRUE);
+	SetDrawBlendMode(DX_BLENDMODE_NOBLEND, 0);
+	DrawBox(boxX1, boxY1, boxX2, boxY2, ColorWhite, FALSE);
+
+	const int centerX = (boxX1 + boxX2) / 2;	//= 365、盤面中心と一致
+
+	//「+47 XP」をティア色フォント 48 で枠内中央
+	SetFontSize(48);
+	int xpW = GetDrawFormatStringWidth("+%d XP", xpGained);
+	DrawFormatString(centerX - xpW / 2, boxY1 + 15, tierColor, "+%d XP", xpGained);
+
+	//「TOTAL: 423 / NEXT: 277 XP」をフォント 28 で枠内下段中央
+	SetFontSize(28);
+	int totalXp = g_playerStats.totalXp;
+	int curTier = g_playerStats.currentTier;
+	if (curTier >= TIER_COUNT - 1) {
+		//ETERNAL 到達済
+		int totalW = GetDrawFormatStringWidth("TOTAL: %d / MAX TIER", totalXp);
+		DrawFormatString(centerX - totalW / 2, boxY1 + 95, ColorGold, "TOTAL: %d / MAX TIER", totalXp);
+	}
+	else {
+		int nextNeeded = TIER_THRESHOLDS[curTier + 1] - totalXp;
+		if (nextNeeded < 0) nextNeeded = 0;
+		int totalW = GetDrawFormatStringWidth("TOTAL: %d / NEXT: %d XP", totalXp, nextNeeded);
+		DrawFormatString(centerX - totalW / 2, boxY1 + 95, ColorWhite, "TOTAL: %d / NEXT: %d XP", totalXp, nextNeeded);
+	}
+
+	SetFontSize(oldFontSize);
+}
+
+//ランクアップ演出 (240 フレーム、5 段階)
+//frame=0..239 を渡す、フレーム外は呼び出さない想定
+void rbDrawRankUpAnimation(int frame, int oldTier, int newTier)
+{
+	int oldFontSize = GetFontSize();
+	unsigned int newColor = getTierColor(newTier);
+
+	//段階 1: 0-30f 画面全体に半透明オーバーレイをフェードイン
+	int overlayAlpha = 180;
+	if (frame < 30) overlayAlpha = (frame * 180) / 30;
+	SetDrawBlendMode(DX_BLENDMODE_ALPHA, overlayAlpha);
+	DrawBox(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, ColorOverlay, TRUE);
+	SetDrawBlendMode(DX_BLENDMODE_NOBLEND, 0);
+
+	//段階 2: 30-90f ランク章を半径 10→120 でスケールアップ + 360° 回転 (中心 640, 384)
+	if (frame >= 30) {
+		int phase2Frame = frame - 30;
+		int radius;
+		if (phase2Frame < 60) {
+			radius = 10 + (phase2Frame * 110) / 60;	//10 → 120
+		}
+		else {
+			radius = 120;	//以降固定
+		}
+		float angle = (phase2Frame * 6.28318f) / 60.0f;	//1 周/60f
+		//回転は装飾的に半径方向にずらして描画 (本格的なテクスチャ回転は不要)
+		int offsetX = (int)(cosf(angle) * 8);
+		int offsetY = (int)(sinf(angle) * 8);
+		DrawCircle(640 + offsetX, 384 + offsetY, radius, newColor, TRUE);
+		DrawCircle(640 + offsetX, 384 + offsetY, radius, ColorWhite, FALSE);
+	}
+
+	//段階 3: 90-180f ティア名を 1 文字ずつフェードイン (フォント 80)
+	if (frame >= 90) {
+		const char* name = getTierName(newTier);
+		int nameLen = (int)strlen(name);
+		int phase3Frame = frame - 90;
+		int charsToShow = phase3Frame / 12;	//1 文字 = 12f
+		if (charsToShow > nameLen) charsToShow = nameLen;
+		SetFontSize(80);
+		int totalW = GetDrawStringWidth(name, nameLen);
+		int x = 640 - totalW / 2;
+		int y = 540;
+		//先頭から charsToShow 文字までを描画 (TCHAR/MBCS 互換のため部分文字列を一時バッファに)
+		char buf[64];
+		int n = (charsToShow < 63) ? charsToShow : 63;
+		for (int i = 0; i < n; i++) buf[i] = name[i];
+		buf[n] = '\0';
+		if (n > 0) {
+			DrawString(x, y, buf, newColor);
+		}
+	}
+
+	//段階 4: 180-240f 「NEW RANK!」を 10f 周期で点滅
+	if (frame >= 180) {
+		int phase4Frame = frame - 180;
+		bool show = ((phase4Frame / 10) % 2) == 0;
+		if (show) {
+			SetFontSize(60);
+			const char* msg = "NEW RANK!";
+			int msgLen = (int)strlen(msg);
+			int msgW = GetDrawStringWidth(msg, msgLen);
+			DrawString(640 - msgW / 2, 200, msg, ColorGold);
+		}
+	}
+
+	SetFontSize(oldFontSize);
+}
+
+//降格演出 (120 フレーム、3 段階)
+void rbDrawDemoteAnimation(int frame, int oldTier, int newTier)
+{
+	int oldFontSize = GetFontSize();
+	unsigned int newColor = getTierColor(newTier);
+
+	//段階 1: 0-30f 画面全体に赤フラッシュ (alpha 100 でフェードイン → アウト)
+	if (frame < 30) {
+		int alpha = (frame < 15) ? (frame * 100 / 15) : ((30 - frame) * 100 / 15);
+		SetDrawBlendMode(DX_BLENDMODE_ALPHA, alpha);
+		DrawBox(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, ColorError, TRUE);
+		SetDrawBlendMode(DX_BLENDMODE_NOBLEND, 0);
+	}
+
+	//段階 2: 30-90f 「DEMOTED...」をフォント 60 ColorError で
+	if (frame >= 30 && frame < 90) {
+		SetFontSize(60);
+		const char* msg = "DEMOTED...";
+		int msgLen = (int)strlen(msg);
+		int msgW = GetDrawStringWidth(msg, msgLen);
+		DrawString(640 - msgW / 2, 300, msg, ColorError);
+	}
+
+	//段階 3: 90-120f 新ティア章を半径 60 で表示
+	if (frame >= 90) {
+		DrawCircle(640, 450, 60, newColor, TRUE);
+		DrawCircle(640, 450, 60, ColorWhite, FALSE);
+		SetFontSize(36);
+		const char* name = getTierName(newTier);
+		int nameLen = (int)strlen(name);
+		int nameW = GetDrawStringWidth(name, nameLen);
+		DrawString(640 - nameW / 2, 530, name, newColor);
+	}
+
+	SetFontSize(oldFontSize);
 }
