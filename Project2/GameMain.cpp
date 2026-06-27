@@ -159,7 +159,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 	SetGraphMode(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_BPP);
 
 	//ウィンドウタイトル
-	SetMainWindowText("Reverse Reversi 1.6.3");
+	SetMainWindowText("Reverse Reversi 1.6.4");
 
 	//背景色の設定
 	SetBackgroundColor(0, 0, 0);

@@ -371,38 +371,45 @@ void rbRemovePieces(ReversiBoard* state, int count) {
 
 //盤面背景 + 四辺枠線を描画 (色は引数差し替え、Game1=暗緑/Game2=明緑)
 //1.5.8 で state->originX/Y + size*cellPx に動的化
+//1.6.4 で四辺枠線を DrawLineAA に変更 (Thickness=3.0f で旧 3 重描画相当のアンチエイリアス枠線、ガビガビ対策)
 void rbDrawBoard(ReversiBoard* state, int boardBgColor) {
 	int boardEndX = state->originX + state->size * state->cellPx;
 	int boardEndY = state->originY + state->size * state->cellPx;
 	DrawBox(state->originX, state->originY, boardEndX, boardEndY, boardBgColor, TRUE);
-	//四辺の枠線 (3 重描画は元コード由来、線幅強調)
-	for (int i = 0; i < 3; i++) {
-		DrawLine(state->originX, state->originY, boardEndX,       state->originY, ColorWhite);
-		DrawLine(state->originX, state->originY, state->originX,  boardEndY,      ColorWhite);
-		DrawLine(boardEndX,      state->originY, boardEndX,       boardEndY,      ColorWhite);
-		DrawLine(state->originX, boardEndY,      boardEndX,       boardEndY,      ColorWhite);
-	}
+	//四辺の枠線 (1.6.4 で DrawLineAA + Thickness=3.0f に統一、旧 DrawLine 3 重ループ相当)
+	float ox = (float)state->originX, oy = (float)state->originY;
+	float ex = (float)boardEndX,      ey = (float)boardEndY;
+	DrawLineAA(ox, oy, ex, oy, ColorWhite, 3.0f);
+	DrawLineAA(ox, oy, ox, ey, ColorWhite, 3.0f);
+	DrawLineAA(ex, oy, ex, ey, ColorWhite, 3.0f);
+	DrawLineAA(ox, ey, ex, ey, ColorWhite, 3.0f);
 }
 
 //縦横の格子線を描画 (盤面 size×size の内側仕切り、size-1 本ずつ)
 //1.5.8 で state->cellPx/originX/originY/size に動的化
+//1.6.4 で DrawLineAA に変更 (ガビガビ対策、Thickness=1.0f デフォルト)
 void rbDrawGrid(ReversiBoard* state) {
-	int boardEndX = state->originX + state->size * state->cellPx;
-	int boardEndY = state->originY + state->size * state->cellPx;
-	int DrawX = state->originX, DrawY = state->originY;
+	float boardEndX = (float)(state->originX + state->size * state->cellPx);
+	float boardEndY = (float)(state->originY + state->size * state->cellPx);
+	float ox = (float)state->originX, oy = (float)state->originY;
+	float drawX = ox, drawY = oy;
 	for (int i = 0; i < state->size - 1; i++) {
-		DrawX += state->cellPx;
-		DrawLine(DrawX, state->originY, DrawX, boardEndY, ColorWhite);
+		drawX += (float)state->cellPx;
+		DrawLineAA(drawX, oy, drawX, boardEndY, ColorWhite);
 	}
 	for (int j = 0; j < state->size - 1; j++) {
-		DrawY += state->cellPx;
-		DrawLine(state->originX, DrawY, boardEndX, DrawY, ColorWhite);
+		drawY += (float)state->cellPx;
+		DrawLineAA(ox, drawY, boardEndX, drawY, ColorWhite);
 	}
 }
 
 //コマを描画 (pieces[0]=黒画像ハンドル、pieces[1]=白画像ハンドル)
 //1.5.8 で DrawExtendGraph に変更、state->cellPx に応じてコマ画像 (元 47px) を拡大
+//1.6.4 で SetDrawMode(BILINEAR) をローカル適用 (拡大時のジャギー軽減、ガビガビ対策)
+//関数末尾で NEAREST に復元、後続描画 (テキスト等) に影響させない
 void rbDrawPieces(ReversiBoard* state, int pieces[2]) {
+	//バイリニア補間 ON: piece.png 47×47 → 60-120px 拡大 (1.28-2.55倍) の輪郭ジャギーを平滑化
+	SetDrawMode(DX_DRAWMODE_BILINEAR);
 	for (int y = 0; y < state->size; y++) for (int x = 0; x < state->size; x++) {
 		if (state->board[y][x]) {
 			int left = x * state->cellPx + state->originX;
@@ -412,6 +419,8 @@ void rbDrawPieces(ReversiBoard* state, int pieces[2]) {
 			                pieces[state->board[y][x] - 1], TRUE);
 		}
 	}
+	//デフォルトに復元 (DxLib 起動時の既定値、後続描画は元通り)
+	SetDrawMode(DX_DRAWMODE_NEAREST);
 }
 
 //ターン/パス/勝者メッセージ箱を盤面下に描画 (PLAYING 中=1 は非表示)
@@ -477,13 +486,14 @@ void rbDrawHints(ReversiBoard* state, int turn, bool showGain) {
 	int hintRadius = state->cellPx / 3;
 
 	//パス 1: 半透明オレンジ丸を描画 (255 段階で 128 = 50% アルファ)
+	//1.6.4 で DrawCircle → DrawCircleAA (posnum=32 で滑らかな円輪郭、ガビガビ対策)
 	SetDrawBlendMode(DX_BLENDMODE_ALPHA, 128);
 	for (int y = 0; y < state->size; y++) for (int x = 0; x < state->size; x++) {
 		if (rbPutPiece(state, x, y, turn, false)) {
 			//マス中央に塗り潰し丸を描画 (半径はマスの 1/3、視認性と被らなさのバランス)
-			int cx = x * state->cellPx + state->originX + state->cellPx / 2;
-			int cy = y * state->cellPx + state->originY + state->cellPx / 2;
-			DrawCircle(cx, cy, hintRadius, hintColor, TRUE);
+			float cx = (float)(x * state->cellPx + state->originX + state->cellPx / 2);
+			float cy = (float)(y * state->cellPx + state->originY + state->cellPx / 2);
+			DrawCircleAA(cx, cy, (float)hintRadius, 32, hintColor, TRUE);
 		}
 	}
 	//ブレンドモードを元に戻す (パス 2 のテキストは不透明、以降の描画に影響しないように必須)
@@ -601,14 +611,15 @@ void applyXpAndCheck(int xpGained, bool won, int* outOldTier, int* outNewTier)
 
 //ランク章描画 (小型、対局画面の右パネル下部用)
 //(x, y) はランク章円の中心ではなく左上座標として扱い、半径 24 の円 + 右にティア名フォント 22
+//1.6.4 で DrawCircle → DrawCircleAA (posnum=32 で滑らかな輪郭、ガビガビ対策)
 void rbDrawRankBadgeSmall(int x, int y)
 {
 	int oldFontSize = GetFontSize();
-	int cx = x + 24;	//円中心 X
-	int cy = y + 24;	//円中心 Y
+	float cx = (float)(x + 24);	//円中心 X
+	float cy = (float)(y + 24);	//円中心 Y
 	unsigned int tierColor = getTierColor(g_playerStats.currentTier);
-	DrawCircle(cx, cy, 24, tierColor, TRUE);
-	DrawCircle(cx, cy, 24, ColorWhite, FALSE);
+	DrawCircleAA(cx, cy, 24.0f, 32, tierColor, TRUE);
+	DrawCircleAA(cx, cy, 24.0f, 32, ColorWhite, FALSE);
 	SetFontSize(22);
 	DrawString(x + 56, y + 12, getTierName(g_playerStats.currentTier), tierColor);
 	SetFontSize(oldFontSize);
@@ -674,6 +685,7 @@ void rbDrawRankUpAnimation(int frame, int oldTier, int newTier)
 	//段階 2: 30-90f ランク章を半径 10→120 でスケールアップ (中心 640, 384 固定)
 	//1.6.1 polish: 旧実装で sinf/cosf による半径 8px の小円軌道オフセットを加えていたが、
 	//円は回転対称なので「中心が揺れ動く」失敗演出になっていた。中心固定でスケールのみの方がスケール感が際立つ
+	//1.6.4 で DrawCircle → DrawCircleAA (posnum=48 で大型円の輪郭ジャギー解消、ガビガビ対策)
 	if (frame >= 30) {
 		int phase2Frame = frame - 30;
 		int radius;
@@ -683,8 +695,8 @@ void rbDrawRankUpAnimation(int frame, int oldTier, int newTier)
 		else {
 			radius = 120;	//以降固定
 		}
-		DrawCircle(640, 384, radius, newColor, TRUE);
-		DrawCircle(640, 384, radius, ColorWhite, FALSE);
+		DrawCircleAA(640.0f, 384.0f, (float)radius, 48, newColor, TRUE);
+		DrawCircleAA(640.0f, 384.0f, (float)radius, 48, ColorWhite, FALSE);
 	}
 
 	//段階 3: 90-180f ティア名を 1 文字ずつフェードイン (フォント 80)
@@ -748,9 +760,10 @@ void rbDrawDemoteAnimation(int frame, int oldTier, int newTier)
 	}
 
 	//段階 3: 90-120f 新ティア章を半径 60 で表示
+	//1.6.4 で DrawCircle → DrawCircleAA (posnum=40 で輪郭ジャギー解消、ガビガビ対策)
 	if (frame >= 90) {
-		DrawCircle(640, 450, 60, newColor, TRUE);
-		DrawCircle(640, 450, 60, ColorWhite, FALSE);
+		DrawCircleAA(640.0f, 450.0f, 60.0f, 40, newColor, TRUE);
+		DrawCircleAA(640.0f, 450.0f, 60.0f, 40, ColorWhite, FALSE);
 		SetFontSize(36);
 		const char* name = getTierName(newTier);
 		int nameLen = (int)strlen(name);

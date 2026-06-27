@@ -1,6 +1,6 @@
 ﻿# CLAUDE.md — ReversedReversi プロジェクト情報
 
-Visual Studio (MSVC) + DxLib による C++ リバーシゲーム。本体は [Project2.sln](Project2.sln) / [Project2/](Project2/) 配下。タイトルバー表記は「Reverse Reversi 1.6.3」、メニュー描画は「まきもどリバーシ Ver 1.6.3」([Project2/MenuScene.cpp:68](Project2/MenuScene.cpp#L68))。日本語 Windows 環境 (コードページ 932) でビルドする前提。バージョン履歴は [CHANGELOG.md](CHANGELOG.md)、ライセンスは [LICENSE.md](LICENSE.md) (MIT)、公開向け案内は [README.md](README.md) を参照 (採番ルール: フェーズ MINOR + サブターゲット PATCH + **挙動不変なコード変更は SUBPATCH** (4 セグメント、1.5.6.1 で導入)、ドキュメント/メタファイルのみの変更は据え置き、**大型機能リリース (B2 ランクシステム等) はフェーズ転換相当として MINOR バンプ可 — 1.6.0 で B2 ランクシステム実装時に採用** — CHANGELOG 冒頭参照)。
+Visual Studio (MSVC) + DxLib による C++ リバーシゲーム。本体は [Project2.sln](Project2.sln) / [Project2/](Project2/) 配下。タイトルバー表記は「Reverse Reversi 1.6.4」、メニュー描画は「まきもどリバーシ Ver 1.6.4」([Project2/MenuScene.cpp:68](Project2/MenuScene.cpp#L68))。日本語 Windows 環境 (コードページ 932) でビルドする前提。バージョン履歴は [CHANGELOG.md](CHANGELOG.md)、ライセンスは [LICENSE.md](LICENSE.md) (MIT)、公開向け案内は [README.md](README.md) を参照 (採番ルール: フェーズ MINOR + サブターゲット PATCH + **挙動不変なコード変更は SUBPATCH** (4 セグメント、1.5.6.1 で導入)、ドキュメント/メタファイルのみの変更は据え置き、**大型機能リリース (B2 ランクシステム等) はフェーズ転換相当として MINOR バンプ可 — 1.6.0 で B2 ランクシステム実装時に採用** — CHANGELOG 冒頭参照)。
 
 姉妹プロジェクトに [TwistTimeStopper](d:\Repositories\TwistTimeStopper) があり、シーン管理の雛形を共有している (元は同じ「Scene管理付き空プロジェクトRev2」テンプレート)。TwistTimeStopper は既に α/β/γ/δ のリファクタを完走しており、共通基盤化のリファレンスとして本ファイル中で頻繁に参照する。
 
@@ -420,6 +420,7 @@ default: break;  // ← 追加
 - **盤面サイズ設定専用シーン `SCENE_BOARD_SIZE`** (1.6.1、2026-06-27) — **完成**。1.5.8 で OPTIONS に組み込んでいた盤面サイズ + 320×320 プレビューを本シーンに分離 ([BoardSizeScene.cpp](Project2/BoardSizeScene.cpp) / [.h](Project2/BoardSizeScene.h))。タイトル「盤面サイズ設定」+ 現在サイズ表示 + プレビュー (810,200) + ←→/Enter/Space サイズ循環 + X キーで OPTIONS 復帰 (`changeScene(SCENE_OPTIONS)` ハードコード)。OPTIONS 5 行目「盤面サイズ設定 →」リンクから Enter で起動
 - **ランクアップ演出の粗修正** (1.6.1、2026-06-27) — **完成**。(a) BGM 再開始対策: SE 専用ハンドル `g_rankUpSeHandle` ([GameMain.h](Project2/GameMain.h)/cpp) を `LoadSoundMem("res/loop_68.wav")` で WinMain ロード、3 Game シーンで `PlaySoundMem(g_rankUpSeHandle, DX_PLAYTYPE_BACK)` に置換 → BGM (`PlaySoundFile` 経由) と別チャンネルで再生して BGM 中断回避、`GameRelease` で `DeleteSoundMem`。(b) 揺れ動き対策: [GameSceneMain.cpp `rbDrawRankUpAnimation`](Project2/GameSceneMain.cpp) 段階 2 の `sinf/cosf` オフセット撤去 → 中心 (640, 384) 固定でスケールアップのみ
 - **OPTIONS レイアウト改善** (1.6.1、2026-06-27) — **完成**。(a) 6 行目「ランクをリセット」とプレビュー領域の被りを SCENE_BOARD_SIZE 分離で根本解消。(b) ラベル描画 (LABEL_X=130) と ON/OFF・サイズ・XP 描画 (TOGGLE_X=500) を別 `DrawString` 呼出に分離して固定 X で揃え、空白パディング撤去。確認/完了モード文言は TOGGLE_X 列にインライン表示、操作ガイドは常時 3 行表示
+- **描画品質改善 (ガビガビ対策)** (1.6.4、2026-06-27) — **完成**。1.5.9 で盤面 720×720 / コマ 60-120px に拡張後にユーザー報告されたジャギー問題を DxLib の AA 系 API で全シーン横断的に解消。`DrawLine` → `DrawLineAA` (盤面枠 Thickness=3.0f、グリッド/プレビュー Thickness=1.0-2.0f)、`DrawCircle` → `DrawCircleAA` (半径別に posnum=24/32/36/40/48 を使い分け)、`rbDrawPieces` に `SetDrawMode(DX_DRAWMODE_BILINEAR)` を局所適用 (NEAREST に復元)。GameSceneMain.cpp の rb 描画ヘルパ群 + BoardSizeScene プレビュー + MenuScene ランク章 + Game3 名前入力下線をすべて対象
 
 ### 未完成 (要対応)
 
@@ -437,7 +438,7 @@ Game3 専用ではなく、ふつう/まきもどり/あまちゃんを横断す
 
 1. ~~**プレイヤーランクシステム**~~ — **1.6.0 (2026-06-27) で完了** ([§10「完成済み」](#10-未完成機能の方針) の B2 エントリ参照)。10 ティア + XP + 全モード降格 + 多段アニメ演出 + OPTIONS リセットで実装、設計検討事項 (モード倍率 / Game3 オプションペナルティ / リセット手段) もすべて確定
 2. **カラーパレット増設 (継続的)** — 1.5.6.1 (2026-06-26) で初期 7 色 (`ColorBronze`/`Silver`/`Gold`/`Platinum`/`Warn`/`Overlay`/`Hover`) を `ColorXxx` 命名で extern 追加済 ([CHANGELOG.md](CHANGELOG.md) [1.5.6.1] 参照)。**1.5.9.1 (2026-06-27) でランク章 +6 色** (`ColorIron`/`Diamond`/`Emerald`/`Ruby`/`Sapphire`/`Amethyst`) **+ 汎用 UI +4 色** (`ColorSuccess`/`Error`/`Info`/`Accent`) **を追加して計 20 色** (CHANGELOG.md [1.5.9.1] 参照)。ランク章 10 色 (Bronze〜Platinum 4 + Iron/Diamond/Emerald/Ruby/Sapphire/Amethyst 6) で LoL 9 ティア / Overwatch 7 ティア / 将棋 9 段位どれにも余裕で対応可能。本リリースでは未参照、B1/B2/テーマ化等の将来機能で使用される伏線。**継続的タスク** として残置: 今後の機能拡張で新色が必要になり次第、同じ `ColorXxx` 命名で [GameMain.cpp](Project2/GameMain.cpp) 定義 + [GameMain.h](Project2/GameMain.h) extern 追加を継続。1 色追加ごとに SUBPATCH バンプ (1.5.6.1 → 1.5.6.2 → ...)、まとまった色バッチでも SUBPATCH 1 つに集約可 (1.5.6.1 で 7 色 / 1.5.9.1 で 10 色のバッチ追加実績)、機能と同時追加の場合は機能側 PATCH バンプに巻き込み。**未対応**: 既存インライン `GetColor()` 呼び出し (盤面色 `(0,100,20)` / `(0,140,20)`、メッセージ箱グレー `(150,150,150)`、ヒントオレンジ `(255,165,0)`、OPTIONS プレビューの黒/白駒、MenuScene/GameSceneTemplate の白赤リテラル) の extern 化 — 別タスクで一括対応する場合 `BoardColorDark/Light` `MsgBoxBg` `ColorHintOrange` 等の命名統一を要設計検討
-3. **描画品質改善 (ガビガビ対策)** — 1.5.9 で盤面 720×720 / コマ 60〜120px に拡張後、ユーザー報告で **盤面グリッド線とコマ円輪郭のジャギー** が顕在化 (2026-06-27)。原因は 2 系統: **(a) `DrawLine` の AA 無し**: 1px 細線をビットマップ直書きしているため斜め成分のないグリッド線でも端部がジャギー、**(b) `DrawExtendGraph` のニアレストネイバー拡大**: piece.png 47×47 ソースを 60/72/90/120px に約 1.28〜2.55× 拡大、デフォルトは `DX_DRAWMODE_NEAREST` のため拡大率が大きいほどジャギー悪化。**対策候補** (どれか単独 or 複合): **(1) `SetDrawMode(DX_DRAWMODE_BILINEAR)` を `rbDrawPieces` 内で局所適用**: バイリニア補間で輪郭平滑化、関数末尾で `DX_DRAWMODE_NEAREST` 復元 (副作用最小、実装コスト最低)、**(2) piece.png 高解像度差し替え**: 120×120 ソースを用意し最大セル時に等倍、他サイズで縮小描画 (縮小はジャギー出にくい、画質改善効果最大、画像差し替えコスト + `DX_DRAWMODE_BILINEAR` 併用が定石)、**(3) グリッド線の太線化 or 盤面背景テクスチャ化**: `DrawLine` を 2px に重ね描き or 盤面 + グリッドを 1 枚のテクスチャに統合して `DrawGraph` で描画、テクスチャ系統は `DX_DRAWMODE_BILINEAR` で平滑化可能。**推奨は (1) 単独着手**: 即効性高くロールバック容易、効果不足なら (2) を追加検討。版数は SUBPATCH (1.5.9.1) または挙動変更含めて機能 PATCH バンプに巻き込み
+3. ~~**描画品質改善 (ガビガビ対策)**~~ — **1.6.4 (2026-06-27) で完了** ([§10「完成済み」](#10-未完成機能の方針) の AA 化エントリ参照)。`DrawLine` → `DrawLineAA`、`DrawCircle` → `DrawCircleAA` (posnum=24-48 で半径別に最適化)、`rbDrawPieces` に `SetDrawMode(DX_DRAWMODE_BILINEAR)` 局所適用 (NEAREST 復元)。全シーン横断 (GameSceneMain.cpp の rb 描画ヘルパ群 + BoardSizeScene プレビュー + MenuScene ランク章 + Game3 名前入力下線) で AA 化、グリッドとコマ輪郭のジャギーを根本解消。将来余地としては piece.png 高解像度差し替え (120×120 ソース) が残るが、現状の BILINEAR + 47px ソースでも視覚的に十分改善
 4. ~~**対局途中での中断機能 (give up / メニュー復帰)**~~ — **1.6.1 (2026-06-27) で完了** ([§10「完成済み」](#10-未完成機能の方針) の中断機能エントリ参照)。Q キー 2 段階確認 (180f タイマー) + XP 計上なし + Game1/2/3 全モード対応 + Game2 ラウンド遷移待ち中も active + 共通ヘルパ `tryAbortMidGame` / `rbDrawAbortGuide` で実装、右パネル「Q: 中断」常時ガイド + 中央オーバーレイ確認文言
 5. ~~**ランクアップ演出の粗修正**~~ — **1.6.1 (2026-06-27) で完了** ((a) BGM 再開始対策として `LoadSoundMem` + `PlaySoundMem` の SE 専用ハンドル化 → BGM と別チャンネルで再生して中断回避、(b) ランク章揺れ動き対策として `sinf/cosf` オフセット撤去 → 中心 (640, 384) 固定でスケールのみ。詳細は [§13 履歴](#13-過去の整理作業履歴) 参照)
 6. ~~**OPTIONS シーンのレイアウト改善**~~ — **1.6.1 (2026-06-27) で完了** ((a) 盤面サイズ + プレビューを新規 SCENE_BOARD_SIZE に分離して OPTIONS の項目列とプレビュー領域の衝突を根本解消、(b) ラベル描画 (LABEL_X=130) と ON/OFF 描画 (TOGGLE_X=500) を別 `DrawString` 呼出に分離して固定 X で揃え)
@@ -1166,6 +1167,37 @@ DxLib パスを `.props` に集約 + x64 ターゲット追加で 4 構成対応
 - settings.ini フォーマット / リソースファイル (.wav/.png) も完全不変
 - 1.6.0 → 1.6.1 → 1.6.2 → 1.6.3 の SE 関連 4 回反復は「ユーザー要件の正確な把握」の重要性を示す教訓: 「BGM 維持しながら短い SE を鳴らす」と複雑化させていたが、ユーザーは元から「BGM 維持 + 無音」を求めていた。Workflow による敵対的検証も「SE をどう鳴らすか」の枠内で考えており、「SE を鳴らさない選択肢」を見落とした
 - **将来の再導入経路**: 専用短尺 SE wav (例 `res/rankup.wav` 1〜2 秒) を追加する場合、(1) GameMain.h に extern 復活 → (2) GameMain.cpp に定義復活 + WinMain で LoadSoundMem → (3) 3 シーン RANK_UP 突入時に PlaySoundMem → (4) GameRelease に DeleteSoundMem の 4 ステップで戻せる。1.6.2 までの実装が完全テンプレートとして残っているので機械的に復元可能
+
+**検証**: 全 4 構成リビルド (Debug|Win32 / Release|Win32 / Debug|x64 / Release|x64) いずれも警告 0 / エラー 0
+
+### 1.6.4 描画品質改善 (AA 化、ガビガビ対策、完了, 2026-06-27, 1.6.4)
+
+§10 将来予定 (プロジェクト全体の拡張) 項目 3「描画品質改善 (ガビガビ対策)」の本実装。1.5.9 で盤面 720×720 / コマ 60-120px に拡張後、ユーザー報告された **盤面グリッド線とコマ円輪郭のジャギー** を DxLib の AA 系 API + バイリニア補間で全シーン横断的に解消。
+
+**実装**:
+
+- **`rbDrawBoard` / `rbDrawGrid`** ([GameSceneMain.cpp](Project2/GameSceneMain.cpp)): `DrawLine` 3 重描画ループを `DrawLineAA(Thickness=3.0f)` の 1 呼出に統一、グリッド線は `DrawLineAA` デフォルト `Thickness=1.0f` で AA 適用
+- **`rbDrawPieces`** ([GameSceneMain.cpp](Project2/GameSceneMain.cpp)): 描画前後で `SetDrawMode(DX_DRAWMODE_BILINEAR)` / `(DX_DRAWMODE_NEAREST)` を局所適用、`DrawExtendGraph` の拡大 (1.28-2.55倍) をバイリニア補間で輪郭平滑化
+- **`rbDrawHints`** ([GameSceneMain.cpp](Project2/GameSceneMain.cpp)): `DrawCircle` → `DrawCircleAA(posnum=32)`、半透明 (`DX_BLENDMODE_ALPHA 128`) との併用 OK
+- **`rbDrawRankBadgeSmall`** ([GameSceneMain.cpp](Project2/GameSceneMain.cpp)): 半径 24 で `posnum=32`
+- **`rbDrawRankUpAnimation`** ([GameSceneMain.cpp](Project2/GameSceneMain.cpp)): 段階 2 (半径 10-120) で `posnum=48` (大型円のジャギー解消)
+- **`rbDrawDemoteAnimation`** ([GameSceneMain.cpp](Project2/GameSceneMain.cpp)): 段階 3 (半径 60) で `posnum=40`
+- **`BoardSizeScene::renderBoardPreview`** ([BoardSizeScene.cpp](Project2/BoardSizeScene.cpp)): 盤面 4 辺 → `DrawLineAA(Thickness=2.0f)`、グリッド → `DrawLineAA(Thickness=1.0f)`、初期 4 駒 → `DrawCircleAA(posnum=24)`
+- **`MenuScene::renderMenuScene`** ([MenuScene.cpp](Project2/MenuScene.cpp)): 右上ランク章 (半径 32) → `DrawCircleAA(posnum=36)`
+- **`Game3Scene` NAME_ENTRY 下線** ([Game3Scene.cpp](Project2/Game3Scene.cpp)): `DrawLine` → `DrawLineAA(Thickness=2.0f)`
+
+**DxLib API 確認**: [C:\DxLib\DxLib.h](file:///C:/DxLib/DxLib.h):2859/2865 で `DrawLineAA(float x1, float y1, float x2, float y2, unsigned int Color, float Thickness=1.0f)` と `DrawCircleAA(float x, float y, float r, int posnum, unsigned int Color, int FillFlag=TRUE, float LineThickness=1.0f, double Angle=0.0)` の存在を確認、全箇所統一適用
+
+**`posnum` 選定基準**: 半径 20px = 24 / 24px = 32 / 32px = 36 / 60px = 40 / 120px = 48。大型円ほど多角形分割数を増やしてジャギー解消、小型円は分割数を抑えて描画コスト最適化
+
+**`SetDrawMode` 局所適用パターン**: `rbDrawPieces` のみ `BILINEAR` を一時設定し、関数末尾で `NEAREST` に戻して後続描画 (テキスト等) に影響させない。`rbDrawHints` のフォントサイズ退避/復元と同じ安全設計
+
+**バージョン**: 視覚品質向上のため **PATCH バンプ 1.6.3 → 1.6.4** (CLAUDE.md §10 項目 3 サブターゲット完了、挙動変化を伴う)
+
+**留意点**:
+- ゲームロジック / XP 計算 / ランクシステム / settings.ini / カラーパレット 20 色 / リソースファイル — 完全不変
+- ユーザー体感は「盤面のグリッドとコマ輪郭が滑らかになる」純粋な視覚品質向上のみ
+- 将来余地: piece.png 高解像度差し替え (47×47 → 120×120 ソース) で BILINEAR 縮小描画にすればさらに高品質化可能だが、現状の BILINEAR + 47px ソースでも視覚的に十分改善されたため本リリースでは見送り
 
 **検証**: 全 4 構成リビルド (Debug|Win32 / Release|Win32 / Debug|x64 / Release|x64) いずれも警告 0 / エラー 0
 

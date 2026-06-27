@@ -250,7 +250,8 @@ void renderGame3Scene(void)
 		SetFontSize(50);
 		SetFontThickness(7);
 		//名前下に線を表示（11文字分程度、X の長さ = 310 で拡張）
-		DrawLine(485, 470, 795, 470, ColorWhite);
+		//1.6.4 で DrawLineAA (Thickness=2.0f で名前入力の下線を強調、ガビガビ対策)
+		DrawLineAA(485.0f, 470.0f, 795.0f, 470.0f, ColorWhite, 2.0f);
 
 		//入力を検知・代入 (FALSE = 確定処理しない、毎フレーム継続入力)
 		//γ-3 で move → render に移動 (KeyInputSingleCharString は描画も兼ねるため)

@@ -65,7 +65,7 @@ void renderMenuScene(void)
 {
 	ChangeFont("ＭＳ 明朝");
 	//タイトル: フォント 40、中央上寄り
-	DrawString(280, 60, "まきもどリバーシ Ver 1.6.3", GetColor(255, 255, 255));
+	DrawString(280, 60, "まきもどリバーシ Ver 1.6.4", GetColor(255, 255, 255));
 
 	//６(2) メニュー項目の表示 (1.5.9 で開始 y=170、gapY=90 で 4 項目を 440 まで)
 	int x = 260, y = 170, gapY = 90;	//（x,y)：表示開始座標　gapY：行の高さ
@@ -98,9 +98,9 @@ void renderMenuScene(void)
 	const int barHalfW = 100;	//進捗バー幅 200px の半分
 	int tier = g_playerStats.currentTier;
 	unsigned int tierColor = getTierColor(tier);
-	//ランク章 (円 半径 32 + 白枠)、中心 (centerX, 80)
-	DrawCircle(centerX, 80, 32, tierColor, TRUE);
-	DrawCircle(centerX, 80, 32, ColorWhite, FALSE);
+	//ランク章 (円 半径 32 + 白枠)、中心 (centerX, 80)、1.6.4 で DrawCircleAA に変更 (posnum=36 で滑らかな輪郭、ガビガビ対策)
+	DrawCircleAA((float)centerX, 80.0f, 32.0f, 36, tierColor, TRUE);
+	DrawCircleAA((float)centerX, 80.0f, 32.0f, 36, ColorWhite, FALSE);
 	//ティア名 (フォント 28、ティア色、中央寄せ)
 	SetFontSize(28);
 	const char* tierName = getTierName(tier);

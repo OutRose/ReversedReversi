@@ -14,6 +14,41 @@
 
 ---
 
+## [1.6.4] - 2026-06-27
+
+CLAUDE.md §10 将来予定 (プロジェクト全体の拡張) 項目 3「描画品質改善 (ガビガビ対策)」の本実装。1.5.9 で盤面 720×720 / コマ 60-120px に拡張後、ユーザー報告のグリッド線とコマ円輪郭のジャギーを DxLib の AA 系 API (`DrawLineAA` / `DrawCircleAA`) + `SetDrawMode(DX_DRAWMODE_BILINEAR)` で全シーン横断的に解消。
+
+### Changed
+
+- **盤面枠線・グリッド線を `DrawLineAA` に統一** ([GameSceneMain.cpp](Project2/GameSceneMain.cpp) `rbDrawBoard` / `rbDrawGrid`): 旧 `DrawLine` 3 重描画ループを `DrawLineAA` の `Thickness=3.0f` 1 呼出に統一、グリッド線は `Thickness=1.0f` デフォルトで AA 適用。1px 細線でも端部のジャギーが平滑化されて綺麗な格子に
+- **コマ描画にバイリニア補間を局所適用** ([GameSceneMain.cpp](Project2/GameSceneMain.cpp) `rbDrawPieces`): `SetDrawMode(DX_DRAWMODE_BILINEAR)` で `DrawExtendGraph` の拡大 (piece.png 47×47 → 60-120px = 1.28-2.55倍) を補間、関数末尾で `DX_DRAWMODE_NEAREST` に復元して後続描画 (テキスト等) への副作用を遮断
+- **ヒント丸を `DrawCircleAA` に変更** ([GameSceneMain.cpp](Project2/GameSceneMain.cpp) `rbDrawHints`): `posnum=32` で滑らかな円輪郭、半透明 (`DX_BLENDMODE_ALPHA 128`) との併用は問題なく動作
+- **対局画面の小ランク章 + ランクアップ演出ランク章 + 降格演出ランク章を `DrawCircleAA` に変更** ([GameSceneMain.cpp](Project2/GameSceneMain.cpp) `rbDrawRankBadgeSmall` / `rbDrawRankUpAnimation` / `rbDrawDemoteAnimation`): 半径 24/60/120px のサイズに応じて `posnum` を 32/40/48 で使い分け (大型円ほど多角形分割数が必要)
+- **メニュー画面右上のランク章を `DrawCircleAA` に変更** ([MenuScene.cpp](Project2/MenuScene.cpp)): `posnum=36` で常時表示される章の輪郭を滑らかに
+- **BoardSizeScene プレビューを AA 化** ([BoardSizeScene.cpp](Project2/BoardSizeScene.cpp) `renderBoardPreview`): 盤面 4 辺の `DrawLine` → `DrawLineAA` (`Thickness=2.0f`)、グリッド線 → `DrawLineAA` (`Thickness=1.0f`)、初期 4 駒の `DrawCircle` → `DrawCircleAA` (`posnum=24`)
+- **Game3 名前入力下線を AA 化** ([Game3Scene.cpp](Project2/Game3Scene.cpp)): `DrawLine` → `DrawLineAA` (`Thickness=2.0f`) で名前入力欄下の白線を強調
+
+### Changed (Misc)
+
+- ウィンドウタイトル `Reverse Reversi 1.6.3` → `Reverse Reversi 1.6.4` ([GameMain.cpp](Project2/GameMain.cpp))
+- メニュー版数表示 `まきもどリバーシ Ver 1.6.3` → `Ver 1.6.4` ([MenuScene.cpp](Project2/MenuScene.cpp))
+
+### Notes
+
+- **視覚品質向上のため PATCH バンプ** 1.6.3 → 1.6.4 (CLAUDE.md §10 項目 3 サブターゲット完了)
+- **DxLib API 確認**: [C:\DxLib\DxLib.h](file:///C:/DxLib/DxLib.h) (line 2859/2865) で `DrawLineAA(float x1, float y1, float x2, float y2, unsigned int Color, float Thickness=1.0f)` および `DrawCircleAA(float x, float y, float r, int posnum, unsigned int Color, int FillFlag=TRUE, float LineThickness=1.0f, double Angle=0.0)` の存在を確認、本リリースで全箇所統一適用
+- **`posnum` 選定**: 半径 20px 程度 = 24 (BoardSize プレビュー)、半径 24px = 32 (小ランク章、ヒント丸)、半径 32px = 36 (メニューランク章)、半径 60px = 40 (降格演出)、半径 120px = 48 (ランクアップ演出)。大型円ほど多角形分割数を増やしてジャギー解消
+- **`SetDrawMode` の局所適用パターン**: `rbDrawPieces` で `BILINEAR` → 描画 → `NEAREST` 復元 (`rbDrawHints` のフォントサイズ退避/復元と同方式)、関数呼出後の状態を変えない安全設計
+- **後方互換完全**: settings.ini フォーマット / ゲームロジック / XP 計算 / ランクシステム / カラーパレット 20 色 / リソース wav・png ファイル — 完全不変、視覚品質のみ向上
+- **検証**: 全 4 構成リビルド (Debug|Win32 / Release|Win32 / Debug|x64 / Release|x64) いずれも警告 0 / エラー 0
+
+### Migration
+
+- 1.6.3 形式の `settings.ini` はそのまま使用可能、変更不要
+- ユーザー体感は「盤面のグリッドとコマ輪郭が滑らかになる」純粋な視覚品質向上のみ、ゲームプレイ感は完全不変
+
+---
+
 ## [1.6.3] - 2026-06-27
 
 1.6.2 のランクアップ SE 重複再生問題を「演出＋無音」設計でシンプルに根本解決。1.6.1/1.6.2 で構築した SE 専用ハンドルインフラ (`LoadSoundMem` / `PlaySoundMem` / `StopSoundMem` / `DeleteSoundMem` / `g_rankUpSeHandle`) を全削除し、ランクアップ時は BGM 継続のみで SE 一切鳴らさない方針に変更。視覚演出 240f アニメ (オーバーレイフェード + ランク章スケール + ティア名フェード + NEW RANK! 点滅) で十分なインパクトは保たれる。
@@ -746,6 +781,7 @@
 
 ---
 
+[1.6.4]: https://github.com/OutRose/ReversedReversi/releases/tag/v1.6.4
 [1.6.3]: https://github.com/OutRose/ReversedReversi/releases/tag/v1.6.3
 [1.6.2]: https://github.com/OutRose/ReversedReversi/releases/tag/v1.6.2
 [1.6.1]: https://github.com/OutRose/ReversedReversi/releases/tag/v1.6.1

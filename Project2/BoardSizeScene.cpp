@@ -45,23 +45,24 @@ static void renderBoardPreview(int boardSize)
 	int boardRight = boardLeft + totalPx;
 	int boardBot   = boardTop  + totalPx;
 
-	//盤面背景 (暗緑) + 枠線
+	//盤面背景 (暗緑) + 枠線 (1.6.4 で DrawLineAA、Thickness=2.0f で枠線強調)
 	DrawBox(boardLeft, boardTop, boardRight, boardBot, GetColor(0, 100, 20), TRUE);
-	DrawLine(boardLeft,  boardTop, boardRight, boardTop, ColorWhite);
-	DrawLine(boardLeft,  boardTop, boardLeft,  boardBot, ColorWhite);
-	DrawLine(boardRight, boardTop, boardRight, boardBot, ColorWhite);
-	DrawLine(boardLeft,  boardBot, boardRight, boardBot, ColorWhite);
+	float bL = (float)boardLeft, bT = (float)boardTop, bR = (float)boardRight, bB = (float)boardBot;
+	DrawLineAA(bL, bT, bR, bT, ColorWhite, 2.0f);
+	DrawLineAA(bL, bT, bL, bB, ColorWhite, 2.0f);
+	DrawLineAA(bR, bT, bR, bB, ColorWhite, 2.0f);
+	DrawLineAA(bL, bB, bR, bB, ColorWhite, 2.0f);
 
-	//グリッド線 (内側、size-1 本ずつ)
+	//グリッド線 (内側、size-1 本ずつ、1.6.4 で DrawLineAA、デフォルト Thickness=1.0f)
 	for (int i = 1; i < boardSize; i++)
 	{
-		int gx = boardLeft + i * cellPx;
-		int gy = boardTop  + i * cellPx;
-		DrawLine(gx, boardTop,  gx, boardBot, ColorWhite);
-		DrawLine(boardLeft, gy, boardRight, gy, ColorWhite);
+		float gx = (float)(boardLeft + i * cellPx);
+		float gy = (float)(boardTop  + i * cellPx);
+		DrawLineAA(gx, bT, gx, bB, ColorWhite);
+		DrawLineAA(bL, gy, bR, gy, ColorWhite);
 	}
 
-	//初期 4 駒 (中央 2×2 の対角配置、piece.png は使わず単純化、DrawCircle)
+	//初期 4 駒 (中央 2×2 の対角配置、piece.png は使わず単純化、1.6.4 で DrawCircleAA に変更、posnum=24)
 	int centerLow  = boardSize / 2 - 1;
 	int centerHigh = boardSize / 2;
 	int radius     = cellPx / 2 - 2;
@@ -75,9 +76,9 @@ static void renderBoardPreview(int boardSize)
 	};
 	for (int i = 0; i < 4; i++)
 	{
-		int cx = boardLeft + pieces[i].bx * cellPx + cellPx / 2;
-		int cy = boardTop  + pieces[i].by * cellPx + cellPx / 2;
-		DrawCircle(cx, cy, radius, pieces[i].color, TRUE);
+		float cx = (float)(boardLeft + pieces[i].bx * cellPx + cellPx / 2);
+		float cy = (float)(boardTop  + pieces[i].by * cellPx + cellPx / 2);
+		DrawCircleAA(cx, cy, (float)radius, 24, pieces[i].color, TRUE);
 	}
 }
 
