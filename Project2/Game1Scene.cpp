@@ -115,8 +115,9 @@ void moveGame1Scene()
 				if (resultNewTier > resultOldTier) {
 					status = GAME_STATUS_RANK_UP;
 					rankUpFrame = 0;
-					//1.6.1: SE 専用ハンドル経由で再生 (BGM = loop_95.wav LOOP と別チャンネル、BGM 再開始を防止)
-					if (g_rankUpSeHandle != -1) PlaySoundMem(g_rankUpSeHandle, DX_PLAYTYPE_BACK);
+					//1.6.3: SE 再生を撤去 (BGM = loop_95.wav LOOP を中断せず継続、演出は視覚のみ)
+					//1.6.1 で loop_68.wav を SE 流用したが BGM と長尺重複、1.6.2 で StopSoundMem 制限したが同曲被りが残存
+					//根本対策として「演出＋無音」設計に変更。将来専用 SE wav 追加時はここに PlaySoundMem 復活で対応
 				}
 				else if (resultNewTier < resultOldTier) {
 					status = GAME_STATUS_DEMOTED;
@@ -151,9 +152,7 @@ void moveGame1Scene()
 		rankUpFrame++;
 		if (rankUpFrame >= RANK_UP_DURATION_FRAMES || (EdgeInput & PAD_INPUT_1) || isXKeyJustPressed()) {
 			status = GAME_STATUS_FINISHED;	//演出終了で通常 FINISHED に戻る (X キーガイド表示)
-			//1.6.1 polish: SE (loop_68.wav) を停止 → BGM (loop_95.wav LOOP) との二重再生を解消
-			//loop_68.wav は長尺 BGM を流用しているため DX_PLAYTYPE_BACK のまま放置すると数分間鳴り続ける
-			if (g_rankUpSeHandle != -1) StopSoundMem(g_rankUpSeHandle);
+			//1.6.3: SE 撤去により StopSoundMem も不要、BGM は元から触っていないため自然継続
 		}
 		break;
 

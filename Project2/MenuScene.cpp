@@ -65,7 +65,7 @@ void renderMenuScene(void)
 {
 	ChangeFont("ＭＳ 明朝");
 	//タイトル: フォント 40、中央上寄り
-	DrawString(280, 60, "まきもどリバーシ Ver 1.6.2", GetColor(255, 255, 255));
+	DrawString(280, 60, "まきもどリバーシ Ver 1.6.3", GetColor(255, 255, 255));
 
 	//６(2) メニュー項目の表示 (1.5.9 で開始 y=170、gapY=90 で 4 項目を 440 まで)
 	int x = 260, y = 170, gapY = 90;	//（x,y)：表示開始座標　gapY：行の高さ

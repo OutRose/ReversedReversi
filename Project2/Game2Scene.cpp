@@ -134,8 +134,8 @@ void moveGame2Scene()
 				if (resultNewTier > resultOldTier) {
 					status = GAME_STATUS_RANK_UP;
 					rankUpFrame = 0;
-					//1.6.1: SE 専用ハンドル経由で再生 (Game2 Round 2 BGM = loop_68.wav LOOP と別チャンネル、BGM 維持)
-					if (g_rankUpSeHandle != -1) PlaySoundMem(g_rankUpSeHandle, DX_PLAYTYPE_BACK);
+					//1.6.3: SE 再生を撤去 (BGM = Round 2 で loop_68.wav LOOP 中。SE 流用は同曲被りで音響的に最悪だった)
+					//「演出＋無音」設計、BGM は触らず継続。将来専用 SE wav 追加時はここに PlaySoundMem 復活で対応
 				}
 				else if (resultNewTier < resultOldTier) {
 					status = GAME_STATUS_DEMOTED;
@@ -188,9 +188,7 @@ void moveGame2Scene()
 		rankUpFrame++;
 		if (rankUpFrame >= RANK_UP_DURATION_FRAMES || (EdgeInput & PAD_INPUT_1) || isXKeyJustPressed()) {
 			status = GAME_STATUS_FINISHED;
-			//1.6.1 polish: SE (loop_68.wav) を停止 → BGM (Game2 Round 2 は loop_68.wav LOOP) との二重再生を解消
-			//SE と BGM が同じファイルだが内部チャンネルは別なので StopSoundMem は SE のみ停止 (BGM 維持)
-			if (g_rankUpSeHandle != -1) StopSoundMem(g_rankUpSeHandle);
+			//1.6.3: SE 撤去により StopSoundMem も不要、BGM は元から触っていないため自然継続
 		}
 		break;
 

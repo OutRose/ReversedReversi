@@ -1,6 +1,6 @@
 ﻿# CLAUDE.md — ReversedReversi プロジェクト情報
 
-Visual Studio (MSVC) + DxLib による C++ リバーシゲーム。本体は [Project2.sln](Project2.sln) / [Project2/](Project2/) 配下。タイトルバー表記は「Reverse Reversi 1.6.2」、メニュー描画は「まきもどリバーシ Ver 1.6.2」([Project2/MenuScene.cpp:68](Project2/MenuScene.cpp#L68))。日本語 Windows 環境 (コードページ 932) でビルドする前提。バージョン履歴は [CHANGELOG.md](CHANGELOG.md)、ライセンスは [LICENSE.md](LICENSE.md) (MIT)、公開向け案内は [README.md](README.md) を参照 (採番ルール: フェーズ MINOR + サブターゲット PATCH + **挙動不変なコード変更は SUBPATCH** (4 セグメント、1.5.6.1 で導入)、ドキュメント/メタファイルのみの変更は据え置き、**大型機能リリース (B2 ランクシステム等) はフェーズ転換相当として MINOR バンプ可 — 1.6.0 で B2 ランクシステム実装時に採用** — CHANGELOG 冒頭参照)。
+Visual Studio (MSVC) + DxLib による C++ リバーシゲーム。本体は [Project2.sln](Project2.sln) / [Project2/](Project2/) 配下。タイトルバー表記は「Reverse Reversi 1.6.3」、メニュー描画は「まきもどリバーシ Ver 1.6.3」([Project2/MenuScene.cpp:68](Project2/MenuScene.cpp#L68))。日本語 Windows 環境 (コードページ 932) でビルドする前提。バージョン履歴は [CHANGELOG.md](CHANGELOG.md)、ライセンスは [LICENSE.md](LICENSE.md) (MIT)、公開向け案内は [README.md](README.md) を参照 (採番ルール: フェーズ MINOR + サブターゲット PATCH + **挙動不変なコード変更は SUBPATCH** (4 セグメント、1.5.6.1 で導入)、ドキュメント/メタファイルのみの変更は据え置き、**大型機能リリース (B2 ランクシステム等) はフェーズ転換相当として MINOR バンプ可 — 1.6.0 で B2 ランクシステム実装時に採用** — CHANGELOG 冒頭参照)。
 
 姉妹プロジェクトに [TwistTimeStopper](d:\Repositories\TwistTimeStopper) があり、シーン管理の雛形を共有している (元は同じ「Scene管理付き空プロジェクトRev2」テンプレート)。TwistTimeStopper は既に α/β/γ/δ のリファクタを完走しており、共通基盤化のリファレンスとして本ファイル中で頻繁に参照する。
 
@@ -1135,6 +1135,37 @@ DxLib パスを `.props` に集約 + x64 ターゲット追加で 4 構成対応
 - settings.ini フォーマット / リソースファイル (.wav/.png) も完全不変
 - `g_rankUpSeHandle` は引き続き `loop_68.wav` を流用、再生時間制限のみで根本の音色重複は将来課題 (専用 SE wav 追加で根本対策可能)
 - Workflow による検証で「中断キーは Q もエッジ検出済」「PAD_INPUT_1 は EdgeInput 経由で既にエッジ」「KEY_INPUT_RETURN/R は連鎖リスク LOW」と整合性確認
+
+**検証**: 全 4 構成リビルド (Debug|Win32 / Release|Win32 / Debug|x64 / Release|x64) いずれも警告 0 / エラー 0
+
+### 1.6.3 ホットフィックス: ランクアップ SE 完全撤去で BGM 単独継続 (完了, 2026-06-27, 1.6.3)
+
+1.6.2 で `StopSoundMem` により SE 再生時間を最大 4 秒に制限したが、Game2 Round 2 では BGM と SE が同曲 (`loop_68.wav`) で同曲被りの音響的最悪パターンが残存。ユーザー指摘で「プレイ時の BGM 継続 + ランクアップ時は演出＋無音」が両立可能と気づき、1.6.1/1.6.2 で構築した SE 専用ハンドルインフラを全削除する根本対策に切替。
+
+**実装**:
+
+- 3 シーン (Game1/2/3) の RANK_UP 突入時 `PlaySoundMem` 削除 (各 1 行)
+- 3 シーンの RANK_UP 退出時 `StopSoundMem` 削除 (各 1 行、1.6.2 で追加した SE 停止コードも不要に)
+- [GameMain.cpp](Project2/GameMain.cpp) `WinMain` 内 `LoadSoundMem("res/loop_68.wav")` 削除
+- [GameSceneMain.cpp](Project2/GameSceneMain.cpp) `GameRelease` 内 `DeleteSoundMem` 削除
+- [GameMain.h](Project2/GameMain.h) `extern int g_rankUpSeHandle;` 削除
+- [GameMain.cpp](Project2/GameMain.cpp) `int g_rankUpSeHandle = -1;` 定義削除
+- 各削除位置にコメントで「1.6.3 で撤去、将来専用 SE wav 追加時は復活」と記録 (再導入経路の保全)
+
+**動作**:
+
+- BGM (`PlaySoundFile` LOOP) は元から触っていないため自然継続
+- RANK_UP 突入で何も鳴らない → 演出 4 秒間 BGM のみ → status = FINISHED に戻ってもそのまま BGM 継続
+- 視覚演出 (`rbDrawRankUpAnimation` 240f アニメ) は変更なし
+
+**バージョン**: 挙動変化を伴う仕様変更のため **PATCH バンプ 1.6.2 → 1.6.3**
+
+**留意点**:
+
+- ゲームロジック / XP 計算 / ティア判定 / 演出フレーム長は完全不変
+- settings.ini フォーマット / リソースファイル (.wav/.png) も完全不変
+- 1.6.0 → 1.6.1 → 1.6.2 → 1.6.3 の SE 関連 4 回反復は「ユーザー要件の正確な把握」の重要性を示す教訓: 「BGM 維持しながら短い SE を鳴らす」と複雑化させていたが、ユーザーは元から「BGM 維持 + 無音」を求めていた。Workflow による敵対的検証も「SE をどう鳴らすか」の枠内で考えており、「SE を鳴らさない選択肢」を見落とした
+- **将来の再導入経路**: 専用短尺 SE wav (例 `res/rankup.wav` 1〜2 秒) を追加する場合、(1) GameMain.h に extern 復活 → (2) GameMain.cpp に定義復活 + WinMain で LoadSoundMem → (3) 3 シーン RANK_UP 突入時に PlaySoundMem → (4) GameRelease に DeleteSoundMem の 4 ステップで戻せる。1.6.2 までの実装が完全テンプレートとして残っているので機械的に復元可能
 
 **検証**: 全 4 構成リビルド (Debug|Win32 / Release|Win32 / Debug|x64 / Release|x64) いずれも警告 0 / エラー 0
 

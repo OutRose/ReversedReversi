@@ -14,6 +14,46 @@
 
 ---
 
+## [1.6.3] - 2026-06-27
+
+1.6.2 のランクアップ SE 重複再生問題を「演出＋無音」設計でシンプルに根本解決。1.6.1/1.6.2 で構築した SE 専用ハンドルインフラ (`LoadSoundMem` / `PlaySoundMem` / `StopSoundMem` / `DeleteSoundMem` / `g_rankUpSeHandle`) を全削除し、ランクアップ時は BGM 継続のみで SE 一切鳴らさない方針に変更。視覚演出 240f アニメ (オーバーレイフェード + ランク章スケール + ティア名フェード + NEW RANK! 点滅) で十分なインパクトは保たれる。
+
+### Removed
+
+- **ランクアップ SE 関連インフラを全削除**:
+  - [GameMain.h](Project2/GameMain.h) `extern int g_rankUpSeHandle;` 削除
+  - [GameMain.cpp](Project2/GameMain.cpp) `int g_rankUpSeHandle = -1;` 定義削除
+  - [GameMain.cpp](Project2/GameMain.cpp) `WinMain` 内 `g_rankUpSeHandle = LoadSoundMem("res/loop_68.wav");` 削除
+  - [GameSceneMain.cpp](Project2/GameSceneMain.cpp) `GameRelease` 内 `DeleteSoundMem(g_rankUpSeHandle)` 削除
+  - [Game1Scene.cpp](Project2/Game1Scene.cpp) / [Game2Scene.cpp](Project2/Game2Scene.cpp) / [Game3Scene.cpp](Project2/Game3Scene.cpp) RANK_UP 突入時の `PlaySoundMem(g_rankUpSeHandle, DX_PLAYTYPE_BACK);` 計 3 箇所削除
+  - 同 RANK_UP 終了時の `StopSoundMem(g_rankUpSeHandle);` 計 3 箇所削除 (1.6.2 で追加した SE 停止コードも不要に)
+- 各削除位置にはコメントで「1.6.3 で撤去、将来専用 SE wav 追加時は復活」と記録
+
+### Changed
+
+- ウィンドウタイトル `Reverse Reversi 1.6.2` → `Reverse Reversi 1.6.3` ([GameMain.cpp](Project2/GameMain.cpp))
+- メニュー版数表示 `まきもどリバーシ Ver 1.6.2` → `Ver 1.6.3` ([MenuScene.cpp](Project2/MenuScene.cpp))
+
+### Fixed
+
+- **ランクアップ時の音楽 (BGM) と SE の根本的衝突問題を解消** (ユーザー指摘: 「プレイ時の BGM を止めず、ランクアップ時は演出＋無音」):
+  - 1.6.0: `PlaySoundFile("res/loop_68.wav", DX_PLAYTYPE_BACK)` で SE 再生 → BGM (loop_95.wav LOOP / Game2 Round 2 で loop_68.wav LOOP) と内部チャンネルを共有して BGM を冒頭再開始
+  - 1.6.1: `LoadSoundMem` + `PlaySoundMem` で SE 専用ハンドル化 → BGM 維持できたが loop_68.wav は数分の長尺 BGM ファイルなので SE と BGM が並走して「音楽二重再生」
+  - 1.6.2: `StopSoundMem` で演出終了時に SE 即停止 → 再生時間は最大 4 秒に制限されたが、Game2 Round 2 では BGM と SE が同曲 (loop_68.wav) で同曲被りの音響的最悪パターンが残存
+  - **1.6.3: ランクアップ時に SE を一切鳴らさない設計に変更** → BGM (`PlaySoundFile` LOOP) は元から触っていないため自然継続、SE が無いので BGM との重複 / 同曲被り問題が根本から消滅
+  - 視覚演出 (`rbDrawRankUpAnimation` 240f アニメ) は変更なし、ユーザー体感は「BGM 継続しながらランクアップ画面が静かに展開する」自然な流れに
+- BGM 継続は 3 シーン (Game1/Game2 Round 2/Game3) すべてで対称、ラウンド 2 BGM 切替も `changeBGM` で従来通り
+
+### Notes
+
+- **挙動変化を伴う仕様変更のため PATCH バンプ** 1.6.2 → 1.6.3
+- **後方互換完全**: settings.ini / カラーパレット 20 色 / リソース wav・png ファイル / ゲームロジック / ランクシステム XP 計算 / ティア判定 / 演出フレーム長 — 完全不変
+- **削除されたインフラの再導入経路**: 各削除位置にコメントで明示。専用 SE wav (例 `res/rankup.wav` 1〜2 秒) を将来追加する場合、(1) GameMain.h に extern 復活 → (2) GameMain.cpp に定義復活 + WinMain で LoadSoundMem → (3) 3 シーンの RANK_UP 突入時に PlaySoundMem → (4) GameRelease に DeleteSoundMem の 4 ステップで戻せる。1.6.2 までの実装が完全テンプレートとして残っている
+- **CLAUDE.md §10 残候補から削除**: 「ランクアップ SE 専用 wav 追加」課題は将来オプションとして残置 (ユーザー判断で SE を欲しくなった時に着手)
+- **検証**: 全 4 構成リビルド (Debug|Win32 / Release|Win32 / Debug|x64 / Release|x64) いずれも警告 0 / エラー 0
+
+---
+
 ## [1.6.2] - 2026-06-27
 
 1.6.1 リリース直後のユーザープレイテストで発覚した 3 件の不具合 (X キー押しっぱなしの連鎖 / ランクアップ SE の長時間二重再生 / Game2 ラウンド 1 予告文と中断ガイドの被り) を集中修正したホットフィックスリリース。Ultracode Workflow による敵対的検証で X キー連鎖の潜在 HIGH バグ 6 件 (1.6.0 から残存していた RANK_UP/DEMOTED スキップ→FINISHED→MENU 連鎖) も同時発見・解消。
@@ -706,6 +746,7 @@
 
 ---
 
+[1.6.3]: https://github.com/OutRose/ReversedReversi/releases/tag/v1.6.3
 [1.6.2]: https://github.com/OutRose/ReversedReversi/releases/tag/v1.6.2
 [1.6.1]: https://github.com/OutRose/ReversedReversi/releases/tag/v1.6.1
 [1.6.0]: https://github.com/OutRose/ReversedReversi/releases/tag/v1.6.0

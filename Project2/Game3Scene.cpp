@@ -180,8 +180,8 @@ void moveGame3Scene()
 					if (resultNewTier > resultOldTier) {
 						status = GAME_STATUS_RANK_UP;
 						rankUpFrame = 0;
-						//1.6.1: SE 専用ハンドル経由で再生 (BGM = loop_95.wav LOOP と別チャンネル、BGM 維持)
-						if (g_rankUpSeHandle != -1) PlaySoundMem(g_rankUpSeHandle, DX_PLAYTYPE_BACK);
+						//1.6.3: SE 再生を撤去 (BGM = loop_95.wav LOOP を中断せず継続、演出は視覚のみ)
+						//「演出＋無音」設計、将来専用 SE wav 追加時はここに PlaySoundMem 復活で対応
 					}
 					else if (resultNewTier < resultOldTier) {
 						status = GAME_STATUS_DEMOTED;
@@ -216,8 +216,7 @@ void moveGame3Scene()
 			rankUpFrame++;
 			if (rankUpFrame >= RANK_UP_DURATION_FRAMES || (EdgeInput & PAD_INPUT_1) || isXKeyJustPressed()) {
 				status = GAME_STATUS_FINISHED;
-				//1.6.1 polish: SE (loop_68.wav) を停止 → BGM (loop_95.wav LOOP) との二重再生を解消
-				if (g_rankUpSeHandle != -1) StopSoundMem(g_rankUpSeHandle);
+				//1.6.3: SE 撤去により StopSoundMem も不要、BGM は元から触っていないため自然継続
 			}
 			break;
 

@@ -105,11 +105,7 @@ void GameRelease(void) {
 	//現在のシーンの削除処理
 	releaseCurrentScene();
 	// 全てのシーンで共有するモノの削除処理をする
-	//1.6.1: ランクアップ SE 専用ハンドル解放 (LoadSoundMem で確保した分、ロード失敗時は -1 で skip)
-	if (g_rankUpSeHandle != -1) {
-		DeleteSoundMem(g_rankUpSeHandle);
-		g_rankUpSeHandle = -1;
-	}
+	//1.6.3: ランクアップ SE ハンドル解放 (DeleteSoundMem) は撤去 (詳細経緯は GameMain.h のコメント参照)
 }
 
 //３(2) 当り判定コールバック 　　　ここでは要素を削除しないこと！！
