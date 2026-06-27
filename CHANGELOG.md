@@ -14,6 +14,101 @@
 
 ---
 
+## [1.5.9] - 2026-06-27
+
+### Added
+
+- **画面サイズ拡張 800×700 → 1280×768** + **全シーンリレイアウト** — 1.5.6 (待った) → 1.5.7 (OPTIONS) → 1.5.8 (盤面サイズ縮小) と Game3 拡張機能を蓄積するうちに 800×700 が窮屈になり、OPTIONS シーンでプレビュー領域とトグル列が完全に被って読めなくなっていた問題を抜本対策
+  - 画面解像度: SCREEN_WIDTH 800 → **1280** (1.6× 拡張)、SCREEN_HEIGHT 700 → **768** (1.097× 拡張、Windows DPI 125% の 1080p ディスプレイでも見切れない安全値) ([GameMain.h](Project2/GameMain.h))
+  - 盤面描画ターゲット領域: 576×576 → **720×720** (1.25× 拡張) ([GameMain.h](Project2/GameMain.h) `BOARD_TARGET_PX` 新規定数追加)
+  - 6×6 セル 96px → **120px** (グリッド線間隔広がり、視覚的「粗さ」解消)
+  - 8×8 セル 72 → **90px**、10×10 セル 57 → **72px**、12×12 セル 48 → **60px**
+  - フォントサイズデフォルト 32 → **40** (1.25× 拡張)
+  - メッセージ用専用フォント `MSG_FONT_SIZE = 28` を新設 ([GameMain.h](Project2/GameMain.h))、`rbDrawMsg` 内で局所的に SetFontSize 退避/復元、768px 高に msg を収める
+- OPTIONS プレビュー領域は **320×320 で維持** (1.5.8 と同サイズ、位置を (450,100) → (810,200) に移動、トグル列との水平距離 240px 確保で被り解消) ([OptionsScene.cpp](Project2/OptionsScene.cpp))
+
+### Changed
+
+- 全主要レイアウト定数を 1280×768 用に更新 ([GameMain.h](Project2/GameMain.h)):
+  - `BOARD_ORIGIN_Y` 5 → 5 (1.5.9 当初 10 で計画、最終 768px 化で 5 に戻し) / `BOARD_END_PX` 580 → 725 / `PIECE_SIZE_PX` 不変 (47、ソース画像サイズ)
+  - パネル: `PANEL_X` 590 → 745 / `PANEL_TURN_X` 680 → 900 / `PANEL_ROUND_LABEL_Y` 220 → 240 (font 40 で WHITE_VALUE 175..215 との重なり解消) / `PANEL_END_MSG_Y` 330 → 410 (Game2/Game3 終了メッセージ、Game3 R:待った 350..390 と独立) / `PANEL_END_MSG_GAME1_Y` 150 → 240 (Game1 終局時 WHITE_VALUE 175..215 と 25px gap 確保)
+  - メッセージ箱: `MSG_BOX_CENTER_X` 192 → 365 (盤面中心追従) / `MSG_BOX_Y_TOP` 630 → 730 / `MSG_BOX_Y_BOTTOM` 655 → 762 / `MSG_TEXT_Y` 620 → 728 (盤面下端 725 直下にタイトに収める)
+  - フォント: `FONT_SIZE_DEFAULT` 32 → 40 / 新規 `MSG_FONT_SIZE` 28 (rbDrawMsg 専用) / `HINT_GAIN_FONT_SIZE` 20 → 24 (上限固定値、動的算出 `cellPx * 5 / 12` は維持)
+- `rbInit` の cellPx 計算を `(size == 10) ? 57 : (576 / size)` → `BOARD_TARGET_PX / size` (720/size) に簡略化、10×10 特殊ケース撤廃 ([GameSceneMain.cpp](Project2/GameSceneMain.cpp))
+- `rbInit` の `originX/originY` を中央寄せ補正計算 → `BOARD_ORIGIN_X / BOARD_ORIGIN_Y` 固定に簡略化 (全サイズが綺麗に割り切れるため、補正不要) ([GameSceneMain.cpp](Project2/GameSceneMain.cpp))
+- `rbDrawMsg` 内に `SetFontSize(MSG_FONT_SIZE)` ↔ `SetFontSize(oldFontSize)` の退避/復元処理を追加、msg を 28px フォントで描画して 768px 高に収める ([GameSceneMain.cpp](Project2/GameSceneMain.cpp))
+- MenuScene のタイトル位置 (120,50) → (280,60)、メニュー項目開始 (130,140,gapY=80) → (260,170,gapY=90)、Credits (160,480) → (820,580) に再配置 + Credits は `SetFontSize(28)` で 5 行 140px 縦使用に圧縮 ([MenuScene.cpp](Project2/MenuScene.cpp))
+- Game3Scene NAME_ENTRY フェーズの座標一式を 1280×768 用に再配置 (タイトル 280→480 / 指示 160,100→280,180 / 入力欄 270,280→490,410 / 下線 265,330,515→485,470,795 / 完了案内 50,370→120,540 / X ガイド 50,600→120,700) + フォントサイズも 45→55 / 30→36 / 40→50 に拡張 ([Game3Scene.cpp](Project2/Game3Scene.cpp))
+- Game3Scene PLAYING フェーズの右パネル line spacing 修正 ([Game3Scene.cpp](Project2/Game3Scene.cpp)): PLAYER 名 nameTmp は `PANEL_ROUND_LABEL_Y + 35` → `+ 50` (font 40 の高さに追従、PLAYER:y=240..280 と nameTmp y=290..330 の 5px 重なり解消)、「R: 待った」ガイドは `+ 70` → `+ 110` (nameTmp との 20px gap 確保 + `PANEL_END_MSG_Y=410` とも独立)
+- OptionsScene のタイトルフォント 45→50、位置 (120,50)→(180,40)、項目列 (130,180,gapY=60)→(130,140,gapY=70)、操作ガイドを y=570 + SetFontSize(28) で 4 行 112px 縦使用に再配置 ([OptionsScene.cpp](Project2/OptionsScene.cpp))
+- OptionsScene `renderBoardPreview` のプレビューサイズ 320 維持、位置 (450,100)→(810,200)、ラベルフォント 20→22 ([OptionsScene.cpp](Project2/OptionsScene.cpp))
+- GameSceneTemplate の Template Scene 描画位置を (30,50)/(30,100) → (60,100)/(60,200) に調整 ([GameSceneTemplate.cpp](Project2/GameSceneTemplate.cpp))
+- ウィンドウタイトル `Reverse Reversi 1.5.8` → `Reverse Reversi 1.5.9` ([GameMain.cpp](Project2/GameMain.cpp))
+- メニュー版数表示 `まきもどリバーシ Ver 1.5.8` → `Ver 1.5.9` ([MenuScene.cpp](Project2/MenuScene.cpp))
+
+### Fixed (1280×768 移行で発見された既存バグも同時解消)
+
+- **Game1 終局時の右パネル要素重なり** ([Game1Scene.cpp](Project2/Game1Scene.cpp) ※ファイル変更なし、定数 `PANEL_END_MSG_GAME1_Y` の値変更で解消): 1.5.8 以前から WHITE カウント数値 (PANEL_WHITE_VALUE_Y=125, font 32 → y=125..157) と Game1 終了メッセージ (PANEL_END_MSG_GAME1_Y=150, font 32 → y=150..246) が y=150..157 の 7px overlap。1.5.9 で font 40 化により 15px overlap (175..215 vs 200..240) に悪化。`PANEL_END_MSG_GAME1_Y` を 200 → 240 に下げて 25px gap 確保 (font 40 line 高に対し十分な余裕)
+- **Game3 PLAYER 名と「R: 待った」ガイドの重なり**: 1.5.7 で導入された PLAYER 名表示は `PANEL_ROUND_LABEL_Y + 35` の line spacing で、font 32 当時は 3px gap だったが 1.5.9 の font 40 化で 5px overlap に悪化。+50 に修正
+- 多並列 adversarial 検証 (Workflow) で 1280×768 化後の全シーンを 3 エージェント並列でレビューし発見した critical/minor 重なりを修正
+
+### Notes
+
+- **ゲームロジック (rbPutPiece / rbIsPass / rbThinkCpu / rbThinkRandom / rbCheckResult / rbCountPieces / rbRemovePieces) は完全に挙動不変** — `state->size` / `cellPx` / `originX/Y` の値が変わるだけ、関数本体のコードは変更なし
+- 思考テーブル / Game1/2/3 の状態遷移 / 「待った」機能 / OPTIONS の 4 トグル仕様 / settings.ini フォーマットも完全不変
+- 1.5.8 形式の `settings.ini` (showHints/showGain/weakCpu/allowUndo/boardSize) はそのまま読込可能、互換性維持
+- piece.png (47×47 ソース) は `DrawExtendGraph` で表示サイズ (60/72/90/120px) に拡大表示。約 2.5× 拡大で多少ジャギーが出る可能性あり (将来高解像度差し替え余地、本リリースでは画像維持)
+- `SetWindowSizeChangeEnableFlag(true)` で実行中リサイズも引き続き機能
+- **768px 高採用の理由**: Windows DPI 125% で 1080p ディスプレイの場合 900px は物理 1125px となりタイトルバー + タスクバー込みで見切れる事例あり。768 で安全マージン確保 (DPI 125% で物理 960px)
+
+---
+
+## [1.5.8] - 2026-06-27
+
+### Added
+
+- **盤面サイズ縮小モード (Game3 専用)** — Game3 (あまちゃん) で 6×6 / 8×8 / 10×10 / 12×12 の 4 段階から盤面サイズを選択できる
+  - 新規オプション `boardSize` を `ReversiOptions` に追加 (デフォルト 12、settings.ini で永続化) ([GameSceneMain.h](Project2/GameSceneMain.h) / [GameMain.cpp](Project2/GameMain.cpp))
+  - 新規定数 `BOARD_SIZE_CHOICES[] = { 6, 8, 10, 12 }` ([GameSceneMain.h](Project2/GameSceneMain.h) extern + [GameSceneMain.cpp](Project2/GameSceneMain.cpp) 定義)
+  - `ReversiBoard` 構造体に `size` / `cellPx` / `originX` / `originY` の 4 フィールドを追加、有効領域は左上 size×size のみ使用 (ストレージは 12×12 固定維持) ([GameSceneMain.h](Project2/GameSceneMain.h))
+  - サイズ別メトリクス: 6×6 (cellPx=96) / 8×8 (72) / 10×10 (57、中央寄せ補正で originX/Y=8) / 12×12 (48、現状デフォルト)
+  - 初期 4 駒位置を `size/2 - 1` / `size/2` で動的計算 (6→2,3 / 8→3,4 / 10→4,5 / 12→5,6)
+- OPTIONS シーン拡張 — 5 行目「盤面サイズ」+ 右側 320×320 盤面プレビュー領域を追加 ([OptionsScene.cpp](Project2/OptionsScene.cpp))
+  - **Left/Right 矢印キー** で前/次のサイズへ循環 (5 行目選択時のみ有効)
+  - Enter/Space は 1〜4 行目で ON/OFF トグル、5 行目では次サイズへ循環
+  - プレビュー領域に現在選択中サイズの盤面 (暗緑 + グリッド + 初期 4 駒) を即時描画
+  - ガイド文言を 3 行 → 4 行に拡張 ("↑↓: 選択 / Enter/Space: ON/OFF・サイズ循環 / ←→: サイズ変更 (5 行目) / X: 戻る")
+- `settings.ini` に `boardSize=12` キーを追加、`loadOptions` で有効値検証 (6/8/10/12 のみ受理、不正値はデフォルト 12 維持) ([GameMain.cpp](Project2/GameMain.cpp))
+- **雛形シーン名固定化** — 旧 `Game4Scene.cpp/.h` を `GameSceneTemplate.cpp/.h` にリネーム、今後の新シーン追加時の永続コピー元として明示化 (ユーザー指示)
+  - `SCENE_GAME4` → `SCENE_TEMPLATE` enum 変更 ([GameSceneMain.h](Project2/GameSceneMain.h))
+  - 関数 5 つを `initGameSceneTemplate` / `moveGameSceneTemplate` / `renderGameSceneTemplate` / `releaseGameSceneTemplate` / `GameSceneTemplateCollideCallback` に改名
+  - インクルードガード `GAMESCENE4_H_` → `GAMESCENETEMPLATE_H_`
+  - 描画文字列 `"ゲーム画面４です"` → `"Template Scene"` (雛形であることを明示)
+  - Project2.vcxproj / .filters の参照更新
+
+### Changed
+
+- `rbInit` シグネチャ `void rbInit(ReversiBoard*)` → `void rbInit(ReversiBoard*, int size)` — size に応じて cellPx/originX/originY と初期 4 駒位置を自動計算 ([GameSceneMain.h](Project2/GameSceneMain.h) / [GameSceneMain.cpp](Project2/GameSceneMain.cpp))
+- 全 `rb*` ロジック関数 (`rbPutPiece` / `rbIsPass` / `rbThinkPlayer` / `rbThinkCpu` / `rbThinkRandom` / `rbCheckResult` / `rbCountPieces` / `rbRemovePieces`) を動的サイズ対応に書き換え — 二重 for ループの境界・GetRand 範囲・配列添字を `state->size` / `state->size - 1` に統一 ([GameSceneMain.cpp](Project2/GameSceneMain.cpp))
+- `rbThinkPlayer` のマウス座標変換を `(mx - state->originX) / state->cellPx` に動的化 — 小盤面 (中央寄せ) でも正しく判定、盤面外クリックは UB なく無視
+- `rbDrawBoard` / `rbDrawGrid` シグネチャに `ReversiBoard*` 引数を追加 ([GameSceneMain.h](Project2/GameSceneMain.h) / [GameSceneMain.cpp](Project2/GameSceneMain.cpp))
+- `rbDrawPieces` を `DrawGraph` → `DrawExtendGraph` に変更 — `state->cellPx` に応じてコマ画像 (元 47px) を 95〜47px に拡大描画 ([GameSceneMain.cpp](Project2/GameSceneMain.cpp))
+- `rbDrawHints` の丸半径 = `state->cellPx / 3`、取得コマ数フォントサイズ = `state->cellPx * 5 / 12` で動的追従 (12→20 / 10→23 / 8→30 / 6→40) ([GameSceneMain.cpp](Project2/GameSceneMain.cpp))
+- Game1Scene / Game2Scene / Game3Scene の `rbInit` 呼出をそれぞれ `rbInit(&state, 12)` / `rbInit(&state, 12)` / `rbInit(&state, g_game3Options.boardSize)` に変更 — Game1/Game2 は完全挙動不変、Game3 のみ動的サイズ
+- Game1Scene / Game2Scene / Game3Scene の `rbDrawBoard` / `rbDrawGrid` 呼出を `&state` 引数追加に統一
+- ウィンドウタイトル `Reverse Reversi 1.5.7` → `Reverse Reversi 1.5.8` ([GameMain.cpp](Project2/GameMain.cpp))
+- メニュー版数表示 `まきもどリバーシ Ver 1.5.7` → `Ver 1.5.8` ([MenuScene.cpp](Project2/MenuScene.cpp))
+
+### Notes
+
+- スコープは **Game3 (あまちゃん) 限定** — Game1=ふつう / Game2=まきもどり は `rbInit(&state, 12)` で完全挙動不変、難易度・盤面・思考すべて 1.5.7 と同等
+- Game3 デフォルト動作 (boardSize=12) は 1.5.7 と完全一致 — settings.ini を作らず起動しても挙動同じ
+- Game3 対局中に OPTIONS でサイズを変更しても、対局中の盤面サイズは init 時に確定したもので継続する。サイズ変更を反映するにはメニューに戻って Game3 を再エントリする必要あり (4 トグルは毎フレーム参照で即時反映だが、boardSize は盤面レイアウトに関わるため不可)
+- ストレージは引き続き `board[12][12]` (576B 固定)、メモリ使用量に変化なし
+- 雛形シーン名固定化により、今後の新シーン追加手順は `(1) GameSceneTemplate.cpp/.h をコピー → 識別子置換 / (2) SCENE_NO に 1 値追加 / (3) sceneTable[] に 1 行追加` の 3 ステップに統一
+
+---
+
 ## [1.5.7] - 2026-06-26
 
 ### Added
@@ -419,6 +514,8 @@
 
 ---
 
+[1.5.9]: https://github.com/OutRose/ReversedReversi/releases/tag/v1.5.9
+[1.5.8]: https://github.com/OutRose/ReversedReversi/releases/tag/v1.5.8
 [1.5.7]: https://github.com/OutRose/ReversedReversi/releases/tag/v1.5.7
 [1.5.6.1]: https://github.com/OutRose/ReversedReversi/releases/tag/v1.5.6.1
 [1.5.6]: https://github.com/OutRose/ReversedReversi/releases/tag/v1.5.6

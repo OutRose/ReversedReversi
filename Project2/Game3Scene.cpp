@@ -36,10 +36,10 @@ BOOL initGame3Scene(void)
 	phase		= GAME3_PHASE_NAME_ENTRY;
 	nameTmp[0]	= '\0';	//名前入力バッファをクリア (元コードのリセット欠落も同時解消)
 
-	//対局フェーズ用の状態リセット
+	//対局フェーズ用の状態リセット (1.5.8 で OPTIONS の boardSize を反映、init 時に確定)
 	status		= GAME_STATUS_TURN_MSG;
 	turn		= GAME_TURN_BLACK;
-	rbInit(&state);
+	rbInit(&state, g_game3Options.boardSize);
 	rbSetMsg(&state, turn, 0);	//先頭ターンの "BLACK TURN" メッセージをセット
 
 	//「待った」スナップショットもリセット (再入場時の前回値残留防止、ゲーム開始直後は undo 不可)
@@ -157,41 +157,41 @@ void renderGame3Scene(void)
 	switch (phase)
 	{
 	case GAME3_PHASE_NAME_ENTRY:
-		//表題・指示を描画する
-		SetFontSize(45);
-		SetFontThickness(9);
-		DrawString(280, 50, "NAME ENTRY", ColorWhite);
+		//表題・指示を描画する (1.5.9 で 1280×768 用に再配置、フォント拡張に伴い座標も調整)
+		SetFontSize(55);
+		SetFontThickness(11);
+		DrawString(480, 80, "NAME ENTRY", ColorWhite);
 
-		SetFontSize(30);
+		SetFontSize(36);
 		SetFontThickness(5);
-		DrawString(160, 100, "アルファベットで名前を入力してください\n入力が終わったら、Enterキーを\n押してください", ColorWhite);
+		DrawString(280, 180, "アルファベットで名前を入力してください\n入力が終わったら、Enterキーを\n押してください", ColorWhite);
 
 		//入力中の名前を表示する (内側で KeyInputSingleCharString が描画も担うので併用、太字で強調)
-		SetFontSize(40);
-		SetFontThickness(6);
-		//名前下に線を表示（11文字分程度、X の長さ = 250）
-		DrawLine(265, 330, 515, 330, ColorWhite);
+		SetFontSize(50);
+		SetFontThickness(7);
+		//名前下に線を表示（11文字分程度、X の長さ = 310 で拡張）
+		DrawLine(485, 470, 795, 470, ColorWhite);
 
 		//入力を検知・代入 (FALSE = 確定処理しない、毎フレーム継続入力)
 		//γ-3 で move → render に移動 (KeyInputSingleCharString は描画も兼ねるため)
-		KeyInputSingleCharString(270, 280, 32, nameTmp, FALSE);
+		KeyInputSingleCharString(490, 410, 40, nameTmp, FALSE);
 
 		//入力完了の案内 (1 文字でも入力されたら Enter 待ち、γ-3 で即座遷移バグ解消)
 		if (nameTmp[0] != '\0')
 		{
-			SetFontSize(30);
-			DrawString(50, 370, "入力完了。\nEnterキーを押して対局開始！", ColorWhite);
+			SetFontSize(36);
+			DrawString(120, 540, "入力完了。\nEnterキーを押して対局開始！", ColorWhite);
 		}
 
-		//X キーでメニュー復帰の案内
+		//X キーでメニュー復帰の案内 (1.5.9 768px 化で y を 780→700 に上げ、画面内に収める)
 		SetFontSize(FONT_SIZE_DEFAULT);
-		DrawString(50, 600, "Xキーでメニューに戻る", ColorSky);
+		DrawString(120, 700, "Xキーでメニューに戻る", ColorSky);
 		break;
 
 	case GAME3_PHASE_PLAYING:
-		//盤面背景 (Game1 と同じ暗緑) + 共通描画ヘルパ
-		rbDrawBoard(GetColor(0, 100, 20));
-		rbDrawGrid();
+		//盤面背景 (Game1 と同じ暗緑) + 共通描画ヘルパ (1.5.8 で state ベースに動的化)
+		rbDrawBoard(&state, GetColor(0, 100, 20));
+		rbDrawGrid(&state);
 		rbDrawPieces(&state, pieces);
 
 		//Game3 専用: プレイヤー手番中のみヒント表示 (1.5.7 で showHints / showGain トグル参照)
@@ -207,16 +207,18 @@ void renderGame3Scene(void)
 		rbDrawTurnIndicator(turn);
 
 		//Game3 専用: 右パネルに PLAYER 名を表示 (名前入力フェーズで入力した nameTmp)
+		//line spacing は font 40 高さに合わせて +50 (1.5.9 で +35 → +50、5px overlap 解消)
 		SetFontSize(FONT_SIZE_DEFAULT);
 		DrawString(PANEL_X, PANEL_ROUND_LABEL_Y, "PLAYER:", ColorWhite);
-		DrawString(PANEL_X, PANEL_ROUND_LABEL_Y + 35, nameTmp, ColorSky);
+		DrawString(PANEL_X, PANEL_ROUND_LABEL_Y + 50, nameTmp, ColorSky);
 
 		//Game3 専用:「待った」可用時のガイド (1.5.6 で導入、1.5.7 で allowUndo ゲート追加)
 		//allowUndo=false / FINISHED 中は R が無効化されているため非表示にして誤解防止
-		//テキストは 800x700 解像度で右端からはみ出さないよう「R: 待った」に短縮 (PANEL_X=590、フォント 32 で約 144px)
+		//テキストは「R: 待った」に短縮 (フォント 40 で約 180px)、PANEL_X=745 から余裕あり
+		//y は PANEL_ROUND_LABEL_Y + 110 (1.5.9 で +70 → +110、nameTmp y=290..330 との 5px overlap 解消 + PANEL_END_MSG_Y=410 とも独立)
 		if (g_game3Options.allowUndo && undoAvailable && status != GAME_STATUS_FINISHED)
 		{
-			DrawString(PANEL_X, PANEL_ROUND_LABEL_Y + 70, "R: 待った", ColorSky);
+			DrawString(PANEL_X, PANEL_ROUND_LABEL_Y + 110, "R: 待った", ColorSky);
 		}
 
 		//ゲーム終了時のメニュー復帰ガイド (3 行で画面内に収める)

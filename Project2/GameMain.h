@@ -38,47 +38,57 @@ void loadOptions(void);
 void saveOptions(void);
 
 //画面設定 (WinMain で SetGraphMode に渡す)
-#define SCREEN_WIDTH  800
-#define SCREEN_HEIGHT 700
+//1.5.9 で 800×700 → 1280×768 に拡張 (1.6× / 1.097×、Windows DPI 125% 1080p ディスプレイでも収まる)
+//Y 方向は控えめ拡張 (タイトルバー + タスクバー差し引いた可視領域に収まる優先)
+#define SCREEN_WIDTH  1280
+#define SCREEN_HEIGHT 768
 #define SCREEN_BPP    16            //ReversedReversi は 16bit (TwistTimeStopper は 24)
 
 //FPS関連 (フレーム周期管理、メインループ + 各シーンの時間換算で共通使用)
 #define FPS         60               //60FPS固定
 #define MS_PER_SEC  1000             //ミリ秒/秒
 
-//盤面関連 (Game1Scene/Game2Scene 共通、12×12 リバーシ盤面)
-#define BOARD_SIZE       12          //12×12 マス (盤面の縦横セル数)
-#define BOARD_SIZE_MAX   11          //添字の最大値 (BOARD_SIZE - 1)
-#define CELL_PX          48          //セル 1 個のピクセル幅
-#define BOARD_ORIGIN_X   5           //盤面左上 X 座標
-#define BOARD_ORIGIN_Y   5           //盤面左上 Y 座標
-#define BOARD_END_PX     580         //盤面終端ピクセル (ORIGIN + BOARD_SIZE * CELL_PX - 4)
-#define PIECE_SIZE_PX    47          //駒画像のサイズ (CELL_PX - 1)
-#define BOARD_CENTER_LOW 5           //初期 4 駒の左上座標
-#define BOARD_CENTER_HIGH 6          //初期 4 駒の右下座標
+//盤面関連 (Game1Scene/Game2Scene/Game3Scene 共通、12×12 リバーシ盤面が最大)
+//1.5.9 で 576px → 720px ターゲット領域に拡張、CELL_PX=60 (= 720/12)
+//6/8/10/12 すべて綺麗に割り切れる (120/90/72/60) ため、1.5.8 の 10×10 中央寄せ補正が不要に
+#define BOARD_SIZE        12         //12×12 マス (ストレージ最大次元、Game1/Game2 の固定サイズ)
+#define BOARD_SIZE_MAX    11         //添字の最大値 (BOARD_SIZE - 1)
+#define BOARD_TARGET_PX   720        //盤面描画ターゲット領域 (px) — state->cellPx = BOARD_TARGET_PX / size
+#define CELL_PX           60         //セル 1 個のピクセル幅 (12×12 デフォルト時、720/12)
+#define BOARD_ORIGIN_X    5          //盤面左上 X 座標
+#define BOARD_ORIGIN_Y    5          //盤面左上 Y 座標 (1.5.9 768px 化に伴い 10 → 5 に詰める)
+#define BOARD_END_PX      (BOARD_ORIGIN_X + BOARD_TARGET_PX)  //盤面終端ピクセル = 5 + 720 = 725
+#define PIECE_SIZE_PX     47         //駒画像のソースサイズ (piece.png は 47×47)、表示は state->cellPx に DrawExtendGraph で拡大
+#define BOARD_CENTER_LOW   5         //初期 4 駒の左上座標 (12×12 の場合、rbInit で動的計算)
+#define BOARD_CENTER_HIGH  6         //初期 4 駒の右下座標 (12×12 の場合、rbInit で動的計算)
 
 //描画レイアウト座標 (右パネル: 黒白カウント、ターン表示、ラウンド表示、終了メッセージ)
-#define PANEL_X            590       //右パネル X 位置 (BLACK/WHITE 等のラベルとカウント)
-#define PANEL_BLACK_LABEL_Y 5
-#define PANEL_BLACK_VALUE_Y 40
-#define PANEL_WHITE_LABEL_Y 90
-#define PANEL_WHITE_VALUE_Y 125
-#define PANEL_TURN_X       680       //ターンインジケータ ("← Now") の X
-#define PANEL_TURN_BLACK_Y 40
-#define PANEL_TURN_WHITE_Y 125
-#define PANEL_ROUND_LABEL_Y 220
-#define PANEL_ROUND_VALUE_X 710
-#define PANEL_END_MSG_Y     330      //ESC で終了メッセージなどの Y
-#define PANEL_END_MSG_GAME1_Y 150    //Game1 専用の終了メッセージ Y
+//1.5.9 で 1280×768 用に再配置、PANEL_X=745 (盤面右端 725 + 20px 余白)
+#define PANEL_X            745       //右パネル X 位置 (BLACK/WHITE 等のラベルとカウント)
+#define PANEL_BLACK_LABEL_Y 20
+#define PANEL_BLACK_VALUE_Y 65
+#define PANEL_WHITE_LABEL_Y 130
+#define PANEL_WHITE_VALUE_Y 175
+#define PANEL_TURN_X       900       //ターンインジケータ ("← Now") の X (PANEL_X + ラベル幅余裕)
+#define PANEL_TURN_BLACK_Y 65
+#define PANEL_TURN_WHITE_Y 175
+#define PANEL_ROUND_LABEL_Y 240      //Game2 Round / Game3 PLAYER ラベル (1.5.9 で 290→240 に上げ、後続要素のスペース確保)
+#define PANEL_ROUND_VALUE_X 925
+#define PANEL_END_MSG_Y     410      //ESC で終了メッセージなどの Y (Game2/Game3、Game3 R:待ったガイド 350..390 と分離)
+#define PANEL_END_MSG_GAME1_Y 240    //Game1 専用の終了メッセージ Y (1.5.9 で WHITE_VALUE 175..215 との 25px gap 確保、200→240)
 
-//メッセージ表示 (盤面下のターン/PASS 通知)
-#define MSG_BOX_CENTER_X    192      //メッセージ箱の水平中心
-#define MSG_BOX_Y_TOP       630
-#define MSG_BOX_Y_BOTTOM    655
-#define MSG_BOX_PADDING_X   30
-#define MSG_TEXT_Y          620
+//メッセージ表示 (盤面下のターン/PASS 通知、盤面の水平中心に揃える)
+//盤面中心 X = BOARD_ORIGIN_X + BOARD_TARGET_PX/2 = 5 + 360 = 365
+//1.5.9 768px 化で MSG_BOX を盤面下端 725 直下に詰める。msg は専用の小さめフォント MSG_FONT_SIZE で描画
+#define MSG_BOX_CENTER_X    365      //メッセージ箱の水平中心 (1.5.9 で盤面拡張に追従)
+#define MSG_BOX_Y_TOP       730      //盤面下端 725 + 5px 余白
+#define MSG_BOX_Y_BOTTOM    762      //画面下端 768 から 6px 余白
+#define MSG_BOX_PADDING_X   40
+#define MSG_TEXT_Y          728      //文字上端、msg フォント 28 で下端 756
 #define MSG_WAIT_FRAMES     60       //setMsg で msg_wait に設定する値 (60FPS で 1 秒)
 
 //フォント設定 (MenuScene 初期化時のサイズ)
-#define FONT_SIZE_DEFAULT   32
-#define HINT_GAIN_FONT_SIZE 20       //ヒントマス内の取得コマ数表示 (CELL_PX=48 に収まる小さめサイズ)
+//1.5.9 で 32 → 40 (1.25× 拡張、画面解像度の拡張に伴う)
+#define FONT_SIZE_DEFAULT   40
+#define MSG_FONT_SIZE       28       //rbDrawMsg 専用の小さめフォント (768px 高に msg を収めるため)
+#define HINT_GAIN_FONT_SIZE 24       //ヒントマス内の取得コマ数表示の固定上限値 (実際は state->cellPx*5/12 で動的算出)

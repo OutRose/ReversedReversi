@@ -31,7 +31,7 @@ BOOL initGame2Scene(void)
 	excuted				= 0;
 	roundTransitWait	= 0;
 	finishedMsgRand		= 0;
-	rbInit(&state);
+	rbInit(&state, 12);	//Game2 (まきもどり) は常に 12×12 固定 (1.5.8 で size 引数明示、ラウンド間 96 マス削除前提)
 	rbSetMsg(&state, turn, 0);	//先頭ターンの "BLACK TURN" メッセージをセット
 
 	//フォント設定 (init で 1 回、move/render では呼ばない)
@@ -137,8 +137,8 @@ void moveGame2Scene()
 void renderGame2Scene(void)
 {
 	//盤面背景 (明緑) + 枠線 + 格子線
-	rbDrawBoard(GetColor(0, 140, 20));
-	rbDrawGrid();
+	rbDrawBoard(&state, GetColor(0, 140, 20));
+	rbDrawGrid(&state);
 
 	//コマ・メッセージ箱・カウントパネル・ターンインジケータ
 	rbDrawPieces(&state, pieces);

@@ -59,16 +59,15 @@ void moveMenuScene()
 	}
 }
 
-//レンダリング処理
+//レンダリング処理 (1.5.9 で 1280×768 用に再配置: タイトル / メニュー項目 / Credits)
 void renderMenuScene(void)
 {
 	ChangeFont("ＭＳ 明朝");
-	DrawString(120, 50, "まきもどリバーシ Ver 1.5.7", GetColor(255, 255, 255));
-	DrawString(160, 480, "Made with DX-Library 3.24f\n\nBGM: hitoshi & ambnience\nby Senses Circuit\nhttps://www.senses-circuit.com/",
-		GetColor(255, 255, 255));
+	//タイトル: フォント 40、中央上寄り
+	DrawString(280, 60, "まきもどリバーシ Ver 1.5.9", GetColor(255, 255, 255));
 
-	//６(2) メニュー項目の表示
-	int x = 130, y = 140, gapY = 80;	//（x,y)：表示開始座標　gapY：行の高さ
+	//６(2) メニュー項目の表示 (1.5.9 で開始 y=170、gapY=90 で 4 項目を 440 まで)
+	int x = 260, y = 170, gapY = 90;	//（x,y)：表示開始座標　gapY：行の高さ
 	for (int i = 0; i < MENU_MAX; i++, y += gapY)
 	{
 		//６(2) ①選択された項目の表示
@@ -82,6 +81,13 @@ void renderMenuScene(void)
 			DrawString(x, y, menuList[i], GetColor(255, 255, 255));
 		}
 	}
+
+	//Credits: 画面右下に配置、フォント 28 で 5 行 (5×28=140、y=580 から 720 まで、768 内に収まる)
+	int oldFontSize = GetFontSize();
+	SetFontSize(28);
+	DrawString(820, 580, "Made with DX-Library 3.24f\n\nBGM: hitoshi & ambnience\nby Senses Circuit\nhttps://www.senses-circuit.com/",
+		GetColor(255, 255, 255));
+	SetFontSize(oldFontSize);
 }
 
 //シーン終了時の後処理

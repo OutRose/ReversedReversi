@@ -126,7 +126,7 @@
     <ClCompile Include="Game1Scene.cpp" />
     <ClCompile Include="Game2Scene.cpp" />
     <ClCompile Include="Game3Scene.cpp" />
-    <ClCompile Include="Game4Scene.cpp" />
+    <ClCompile Include="GameSceneTemplate.cpp" />
     <ClCompile Include="GameMain.cpp" />
     <ClCompile Include="GameSceneMain.cpp" />
     <ClCompile Include="MenuScene.cpp" />
@@ -136,7 +136,7 @@
     <ClInclude Include="Game1Scene.h" />
     <ClInclude Include="Game2Scene.h" />
     <ClInclude Include="Game3Scene.h" />
-    <ClInclude Include="Game4Scene.h" />
+    <ClInclude Include="GameSceneTemplate.h" />
     <ClInclude Include="GameMain.h" />
     <ClInclude Include="GameSceneMain.h" />
     <ClInclude Include="GameStatus.h" />

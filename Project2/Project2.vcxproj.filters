@@ -45,7 +45,7 @@
     <ClCompile Include="MenuScene.cpp">
       <Filter>ソース ファイル\Scene</Filter>
     </ClCompile>
-    <ClCompile Include="Game4Scene.cpp">
+    <ClCompile Include="GameSceneTemplate.cpp">
       <Filter>ソース ファイル\Scene</Filter>
     </ClCompile>
     <ClCompile Include="OptionsScene.cpp">
@@ -74,7 +74,7 @@
     <ClInclude Include="MenuScene.h">
       <Filter>ヘッダー ファイル\Scene</Filter>
     </ClInclude>
-    <ClInclude Include="Game4Scene.h">
+    <ClInclude Include="GameSceneTemplate.h">
       <Filter>ヘッダー ファイル\Scene</Filter>
     </ClInclude>
     <ClInclude Include="OptionsScene.h">
